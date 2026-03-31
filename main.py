@@ -16,11 +16,11 @@ class MultilayerPerceptron:
 
         for x, layer in enumerate(self.sizes):
             for y in range(layer):
-                ax.add_patch(plt.Circle((x * 1.5, y + 1), 0.4, color='black', alpha=self.perceptrons[x][y]))
+                ax.add_patch(plt.Circle((x * 5 + 1, y + 1), 0.4, color='black', alpha=self.perceptrons[x][y]))
 
         # Set limits so circles are visible
-        ax.set_xlim(len(self.sizes)*1.5)
-        ax.set_ylim(max(self.sizes) + 1)
+        ax.set_xlim(0, len(self.sizes) * 5 - 2.6)
+        ax.set_ylim(0, max(self.sizes) + 1)
 
         # Ensure circles stay circular
         ax.set_aspect('equal')
