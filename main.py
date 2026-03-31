@@ -1,14 +1,36 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class MultilayerPerceptron:
 
     def __init__(self, sizes):
-        random_gen = np.random.default_rng()
-        self.perceptrons = [np.random(i, dtype=np.float32) for i in sizes]
-        self.paths = [np.random((sizes[i] * sizes[i + 1], 2), dtype=np.float32) for i in range(len(sizes) - 1)]
+        self.sizes = sizes
+
+        random_gen = np.random.default_rng(42)
+        self.perceptrons = [random_gen.random(i, dtype=np.float32) for i in sizes]
+        self.paths = [random_gen.random((sizes[i] * sizes[i + 1], 2), dtype=np.float32) for i in range(len(sizes) - 1)]
+
+    def display(self):
+        fig, ax = plt.subplots()
+
+        for x, layer in enumerate(self.sizes):
+            for y in range(layer):
+                ax.add_patch(plt.Circle((x * 1.5, y + 1), 0.4, color='black', alpha=self.perceptrons[x][y]))
+
+        # Set limits so circles are visible
+        ax.set_xlim(len(self.sizes)*1.5)
+        ax.set_ylim(max(self.sizes) + 1)
+
+        # Ensure circles stay circular
+        ax.set_aspect('equal')
+
+        # Hide axes for a cleaner diagram look
+        ax.axis('on')
+
+        plt.title("Multilayer Perceptron")
+        plt.show()
 
 
-MLP = MultilayerPerceptron([784, 16, 16, 16, 10])
-print(MLP.perceptrons)
-print(MLP.paths)
+MLP = MultilayerPerceptron([16, 16, 16, 16, 16])
+MLP.display()
