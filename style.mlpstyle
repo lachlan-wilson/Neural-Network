@@ -1,0 +1,6 @@
+patch.linewidth:    0.5
+patch.force_edgecolor:  True
+
+font.family:  satoshi variable
+font.weight:  medium
+font.size:    10
