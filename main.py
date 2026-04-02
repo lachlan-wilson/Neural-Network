@@ -89,7 +89,7 @@ class MultilayerPerceptron:
                 for y in range(self.sizes[x]):
                     show_perceptron()
 
-    def display(self, max_height=None, layer_width=6):
+    def display(self, max_height=None, layer_width=6, output_labels=None):
         if max_height is None:
             max_height = max(self.sizes)
 
@@ -98,10 +98,20 @@ class MultilayerPerceptron:
         self.show_background(ax, max_height, layer_width)
         self.show_perceptrons(ax, max_height, layer_width)
 
+        for y, label in enumerate(output_labels):
+            ax.text((len(self.sizes) - 0.5) * layer_width + 1,
+                    y + 1 + (max_height - self.sizes[-1]) / 2,
+                    str(label),
+                    ha="center",
+                    va="center")
+
         # Set limits so circles are visible
         ax.set_xlim(0, len(self.sizes) * layer_width)
         ax.set_ylim(0, max_height + 4.2)
-        ax.text(len(self.sizes) * layer_width / 2, -1, "Activation: Colour (low: red high: green)    Weight/Bias: Opacity", ha="center")
+        ax.text(len(self.sizes) * layer_width / 2,
+                -1,
+                "Activation: Colour (low: red high: green)    Weight/Bias: Opacity",
+                ha="center")
 
         # Ensure circles stay circular
         ax.set_aspect("equal")
@@ -114,4 +124,4 @@ class MultilayerPerceptron:
 
 
 MLP = MultilayerPerceptron([784, 16, 16, 16, 10])
-MLP.display(max_height=16)
+MLP.display(max_height=16, output_labels=range(1, 11))
