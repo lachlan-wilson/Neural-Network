@@ -4,3 +4,7 @@ patch.force_edgecolor:  True
 font.family:  satoshi variable
 font.weight:  medium
 font.size:    10
+
+axes.titlepad: 8
+
+figure.dpi: 500
