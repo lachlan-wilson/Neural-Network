@@ -15,7 +15,8 @@ class MultilayerPerceptron:
 
         random_gen = np.random.default_rng(42)
         self.perceptrons = [random_gen.random(i, dtype=np.float32) for i in sizes]
-        self.paths = [random_gen.random((sizes[i] * sizes[i + 1], 2), dtype=np.float32) for i in range(len(sizes) - 1)]
+        self.biases = [random_gen.random(i, dtype=np.float32) for i in sizes[1:]]
+        self.weights = [random_gen.random((sizes[i], sizes[i + 1])) for i in range(len(sizes) - 1)]
 
     def show_background(self, ax, max_height, layer_width):
         x_offset = layer_width / 2
@@ -31,14 +32,14 @@ class MultilayerPerceptron:
                           color=(0, 0, 0, 0.05)))
         ax.text(layer_width * (len(self.sizes) - 0.5), max_height + 3, "Output Layer", va="center", ha="center")
 
-    def show_perceptrons(self, ax, max_height, layer_width, perceptron_colour):
+    def show_perceptrons(self, ax, max_height, layer_width):
 
-        def draw_cirlce(colour):
+        def draw_circle(colour):
             ax.add_patch(plt.Circle((x * layer_width + x_offset,
                                      y + 1 if self.sizes[x] >= max_height else y + (
                                              max_height - self.sizes[x]) / 2 + 1),
                                     0.4,
-                                    edgecolor=perceptron_colour,
+                                    edgecolor=(0, 0, 0),
                                     facecolor=colour,
                                     zorder=10))
 
@@ -51,14 +52,18 @@ class MultilayerPerceptron:
                                     max_height - self.sizes[x]) / 2 + 1,
                              y2 + 1 if self.sizes[x + 1] >= max_height else y2 + (
                                      max_height - self.sizes[x + 1]) / 2 + 1],
-                            color=(1 - self.paths[x][y][0], self.paths[x][y][0], 0, 1),
-                            linewidth=(non_linear(self.paths[x][y][1]))
+                            color=(1 - self.perceptrons[x][y], self.perceptrons[x][y], 0,
+                                   non_linear(self.weights[x][y][y2])),
+                            linewidth=1
                             )
             except IndexError:
                 pass
 
-            draw_cirlce((1, 1, 1))
-            draw_cirlce((perceptron_colour, self.perceptrons[x][y]))
+            draw_circle((1, 1, 1))
+            draw_circle((1 - self.perceptrons[x][y],
+                         self.perceptrons[x][y],
+                         0,
+                         1 if x == 0 else non_linear(self.biases[x - 1][y])))
 
         x_offset = layer_width / 2
 
@@ -84,18 +89,19 @@ class MultilayerPerceptron:
                 for y in range(self.sizes[x]):
                     show_perceptron()
 
-    def display(self, max_height=None, layer_width=6, perceptron_colour=(0, 0, 0)):
+    def display(self, max_height=None, layer_width=6):
         if max_height is None:
             max_height = max(self.sizes)
 
         fig, ax = plt.subplots()
 
         self.show_background(ax, max_height, layer_width)
-        self.show_perceptrons(ax, max_height, layer_width, perceptron_colour)
+        self.show_perceptrons(ax, max_height, layer_width)
 
         # Set limits so circles are visible
         ax.set_xlim(0, len(self.sizes) * layer_width)
         ax.set_ylim(0, max_height + 4.2)
+        ax.text(len(self.sizes) * layer_width / 2, -1, "Activation: Colour (low: red high: green)    Weight/Bias: Opacity", ha="center")
 
         # Ensure circles stay circular
         ax.set_aspect("equal")
@@ -108,5 +114,4 @@ class MultilayerPerceptron:
 
 
 MLP = MultilayerPerceptron([784, 16, 16, 16, 10])
-MLP.display(max_height=16, perceptron_colour=(0.1, 0.4, 0.9))
-
+MLP.display(max_height=16)
