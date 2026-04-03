@@ -214,6 +214,11 @@ class Diagram(plt.Axes):
         if x < len(self.mlp.sizes):
             # Loop for each perceptron in the next layer
             for y2 in range(self.mlp.sizes[x + 1]):
+                print(x)
+                print(y)
+                print(y2)
+                print(y2 + (self.max_height - self.mlp.sizes[x + 1]) / 2)
+                print("")
                 # Draw a line between the centre of the two perceptrons
                 self.my_add_line([x * self.layer_width + self.x_offset,
                                   (x + 1) * self.layer_width + self.x_offset],
@@ -244,8 +249,8 @@ class Diagram(plt.Axes):
                 self.add_layer_title(x)
 
                 # Add the top perceptrons
-                for y in range(self.max_height)[:int(self.max_height / 2) - 1]:
-                    self.add_perceptron(x, y, True)
+                for y in range(self.max_height)[int(self.max_height / 2) + 1 + (self.max_height & 1):]:
+                    self.add_perceptron(x, y)
 
                 # Add an ellipsis in the middle
                 for i in [-0.4, 0, 0.4]:
@@ -255,8 +260,8 @@ class Diagram(plt.Axes):
                                               ))
 
                 # Add the bottom perceptrons
-                for y in range(self.max_height)[int(self.max_height / 2) + 1 + (self.max_height & 1):]:
-                    self.add_perceptron(x, y)
+                for y in range(self.max_height)[:int(self.max_height / 2) - 1]:
+                    self.add_perceptron(x, y, True)
 
             # Otherwise
             else:
