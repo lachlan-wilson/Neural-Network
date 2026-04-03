@@ -33,7 +33,7 @@ class MultilayerPerceptron:
         self.sizes = sizes
 
         random_gen = np.random.default_rng(42)
-        self.perceptrons = [random_gen.random(i, dtype=np.float32) for i in sizes]
+        self.activations = [random_gen.random(i, dtype=np.float32) for i in sizes]
         self.biases = [10 * random_gen.random(i, dtype=np.float32) - 5 for i in sizes[1:]]
         self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
 
@@ -86,7 +86,7 @@ class MultilayerPerceptron:
                                     zorder=10
                                     ))
 
-        def show_perceptron():
+        def show_perceptron(inverse=False):
             try:
                 for y2 in range(max_height if self.sizes[x + 1] > max_height else self.sizes[x + 1]):
                     ax.plot([x * layer_width + x_offset,
@@ -95,7 +95,7 @@ class MultilayerPerceptron:
                                     max_height - self.sizes[x]) / 2 + 1,
                              y2 + 1 if self.sizes[x + 1] >= max_height else y2 + (
                                      max_height - self.sizes[x + 1]) / 2 + 1],
-                            color=(1 - self.perceptrons[x][y], self.perceptrons[x][y], 0,
+                            color=(1 - self.activations[x][y], self.activations[x][y], 0,
                                    non_linear(sigmoid(self.weights[x][y][y2]))),
                             linewidth=non_linear(sigmoid(self.weights[x][y][y2]))
                             )
@@ -103,10 +103,10 @@ class MultilayerPerceptron:
                 pass
 
             draw_circle((1, 1, 1, 1))
-            draw_circle((1 - self.perceptrons[x][y],
-                         self.perceptrons[x][y],
+            draw_circle((1 - self.activations[x][y if not inverse else -y],
+                         self.activations[x][y if not inverse else -y],
                          0,
-                         1 if x == 0 else non_linear(sigmoid(self.biases[x - 1][y]))
+                         1 if x == 0 else non_linear(sigmoid(self.biases[x - 1][y if not inverse else -y]))
                          ))
 
         x_offset = layer_width / 2
@@ -122,7 +122,7 @@ class MultilayerPerceptron:
                         )
 
                 for y in range(max_height)[:int(max_height / 2) - 1]:
-                    show_perceptron()
+                    show_perceptron(inverse=True)
 
                 for i in [-0.4, 0, 0.4]:
                     ax.add_patch(plt.Circle((x * layer_width + x_offset, (max_height + 1) / 2 + i),
@@ -181,15 +181,14 @@ class MultilayerPerceptron:
         plt.show()
 
     def calculate_activations(self):
-        for x, layer in enumerate(self.perceptrons[1:]):
-            for y, perceptron in enumerate(layer):
+        for x in range(1, len(self.sizes)):
+            for y in range(self.sizes[x]):
                 new_activation = 0
-                for prev_y, prev_perceptron in enumerate(self.perceptrons[x-1]):
-                    new_activation += prev_perceptron * self.weights[x-1][y][prev_y]
 
-                new_activation += self.biases[x-1][y]
+                for prev_y in range(self.sizes[x-1]):
+                    new_activation += self.activations[x - 1][prev_y] * self.weights[x - 1][prev_y][y]
 
-                self.perceptrons[x][y] = sigmoid(new_activation)
+                self.activations[x][y] = sigmoid(new_activation + self.biases[x - 1][y])
 
 
 MLP = MultilayerPerceptron([748, 16, 16, 16, 10])
