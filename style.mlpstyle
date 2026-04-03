@@ -1,8 +1,8 @@
-patch.linewidth:    0.5
+patch.linewidth:    1
 patch.force_edgecolor:  True
 
 font.family:  satoshi variable
-font.weight:  medium
+font.weight:  light
 font.size:    10
 
 axes.titlepad: 8
