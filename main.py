@@ -80,7 +80,7 @@ def sigmoid(x):
 
 
 class Diagram(plt.Axes):
-    def __init__(self, mlp, figure, max_height=None, layer_width=6, output_labels=None, ):
+    def __init__(self, mlp, figure, max_height=None, layer_width=6, output_labels=None, **kwargs):
         # Ensure all the parameters are valid
         assert isinstance(mlp, MultilayerPerceptron), "mlp must be a MultilayerPerceptron."
         assert isinstance(figure, plt.Figure), "figure must be a Figure."
@@ -90,6 +90,7 @@ class Diagram(plt.Axes):
             isinstance(label, str) for label in output_labels)
                                          ), "output_labels must be None or list of strings."
 
+        super().__init__(figure, [0, 0, 1, 1], **kwargs)
         plt.style.use("./style.mlpstyle")  # Use the styles located at ./styles.mlpstyle
 
         # Store variables as class attributes
@@ -151,7 +152,7 @@ class Diagram(plt.Axes):
                                   zorder=2  # Add circles above lines
                                   ))
 
-    def add_line(self, xs, ys, colour):
+    def my_add_line(self, xs, ys, colour):
         """
         Add a line to the plot at given positions.
 
@@ -214,19 +215,19 @@ class Diagram(plt.Axes):
             # Loop for each perceptron in the next layer
             for y2 in range(self.mlp.sizes[x + 1]):
                 # Draw a line between the centre of the two perceptrons
-                self.add_line([x * self.layer_width + self.x_offset,
-                               (x + 1) * self.layer_width + self.x_offset],
-                              [y + 1, 1 + (y2 if self.mlp.sizes[x + 1] >= self.max_height else
-                                           y2 + (self.max_height - self.mlp.sizes[x + 1])) / 2],
-                              (1 - self.mlp.activations[x][y],
-                               self.mlp.activations[x][y],
-                               0,
-                               non_linear(sigmoid(self.mlp.weights[x][y][1 + (
-                                   y2 if self.mlp.sizes[x + 1] >= self.max_height else
-                                   y2 + (self.max_height - self.mlp.sizes[x + 1]) / 2
-                               )]))))
+                self.my_add_line([x * self.layer_width + self.x_offset,
+                                  (x + 1) * self.layer_width + self.x_offset],
+                                 [y + 1, 1 + (y2 if self.mlp.sizes[x + 1] >= self.max_height else
+                                              y2 + (self.max_height - self.mlp.sizes[x + 1])) / 2],
+                                 (1 - self.mlp.activations[x][y],
+                                  self.mlp.activations[x][y],
+                                  0,
+                                  non_linear(sigmoid(self.mlp.weights[x][y][1 + (
+                                      y2 if self.mlp.sizes[x + 1] >= self.max_height else
+                                      y2 + (self.max_height - self.mlp.sizes[x + 1]) / 2
+                                  )]))))
 
-    def show(self):
+    def show_diagram(self):
         """
         Display the plot.
         """
@@ -453,9 +454,9 @@ class MultilayerPerceptron:
         assert output_labels is None or (isinstance(output_labels, list) and all(
             isinstance(label, str) for label in output_labels)), "output_labels must be None or list of strings."
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=(12, 8))
         diagram = Diagram(self, fig, max_height, layer_width, output_labels)
-        diagram.show()
+        diagram.show_diagram()
 
     def calculate_activations(self):
         for x in range(1, len(self.sizes)):
