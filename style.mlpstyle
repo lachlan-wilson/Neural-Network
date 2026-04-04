@@ -1,10 +1,10 @@
-patch.linewidth:    1
+patch.linewidth:    3
 patch.force_edgecolor:  True
 
 font.family:  satoshi variable
 font.weight:  light
-font.size:    20
+font.size:    50
 
-axes.titlepad: 8
+axes.titlepad: 20
 
-figure.dpi: 200
+figure.dpi: 100
