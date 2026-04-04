@@ -68,33 +68,74 @@ def sigmoid(x):
 
     Parameters
     ----------
-    x: float
-        TODO make a numpy array
+    x: ndarray(dtype=float, ndim=1)
+        A numpy array of the x values
 
     Returns
     -------
-    float
-        A value between 0 and 1 inclusive.
+    ndarray(dtype=float, ndim=1)
+        A numpy array of values between 0 and 1 inclusive.
     """
     return 1 / (1 + np.e ** -x)
 
 
 class Diagram(plt.Axes):
-    def __init__(self, mlp, figure, max_height=None, layer_width=6, output_labels=None, **kwargs):
+    """
+    Axes that plots a diagram of the multilayer perceptron based on a `MultiLayerPerceptron` object.
+
+    Attributes
+    ----------
+    mlp: MultilayerPerceptron
+            An instance of the `MultilayerPerceptron` object.
+    max_height: int
+        The maximum number of perceptrons shown in one layer.
+    layer_width: int
+        The width of each layer.
+    x_offset: float
+        The x shift of each perceptron, `layer_width / 2`.
+    output_labels: list of str
+        A list containing the names of the output perceptrons.
+
+    Methods
+    -------
+    show_diagram()
+        Display the diagram in its `Figure`
+    """
+    def __init__(self, mlp, __figure, max_height=None, layer_width=6, output_labels=None, **kwargs):
+        """
+        Initialise the `Diagram` object with the given parameters. Assigns itself to the global figure.
+
+        Parameters
+        ----------
+        mlp: MultilayerPerceptron
+            An instance of the `MultilayerPerceptron` object.
+        __figure: Figure
+            The `Figure` object the diagram should be contained in.
+        max_height: int, default=None
+            The maximum number of perceptrons shown in one layer.
+        layer_width: int, default=6
+            The width of each layer.
+        output_labels: list of str, default=
+            A list containing the names of the output perceptrons
+        **kwargs: dict
+            Extra arguments to `Figure`: refer to `Figure` documentation for a
+            list of all possible arguments.
+        """
         # Ensure all the parameters are valid
         assert isinstance(mlp, MultilayerPerceptron), "mlp must be a MultilayerPerceptron."
-        assert isinstance(figure, plt.Figure), "figure must be a Figure."
+        assert isinstance(__figure, plt.Figure), "__figure must be a Figure."
         assert isinstance(max_height, (int, float)) and max_height > 0, "max_height must be a positive, real number."
         assert isinstance(layer_width, (int, float)) and layer_width > 0, "layer_width must be a positive, real number."
         assert output_labels is None or (isinstance(output_labels, list) and all(
             isinstance(label, str) for label in output_labels)
                                          ), "output_labels must be None or list of strings."
 
-        super().__init__(figure, [0, 0, 1, 1], **kwargs)
+        super().__init__(__figure, [0, 0, 1, 1], **kwargs)
+        __figure.add_axes(self)
         plt.style.use("./style.mlpstyle")  # Use the styles located at ./styles.mlpstyle
 
         # Store variables as class attributes
-        self.figure = figure
+        self.figure = __figure
         self.mlp = mlp
         self.layer_width = layer_width
         self.x_offset = layer_width / 2
@@ -106,13 +147,13 @@ class Diagram(plt.Axes):
         else:
             self.max_height = max_height
 
-    def add_box(self, start, width, title):
+    def _add_box(self, start, width, title):
         """
         Add a box to the plot at a given position.
 
         Parameters
         ----------
-        start: tuple of floats
+        start: tuple of float
             Coordinate (x, y) for bottom left of box.
         width: float
             Width of the box.
@@ -126,22 +167,22 @@ class Diagram(plt.Axes):
                                      color=(0, 0, 0, 0.05)
                                      ))
         # Add the title
-        self.text(self.x_offset,
+        self.text(start[0] + width / 2,
                   self.max_height + 3,
                   title,
                   va="center",  # Centre the title on its coordinates
                   ha="center"
                   )
 
-    def add_circle(self, centre, colour=(1, 1, 1, 1)):
+    def _add_circle(self, centre, colour=(1, 1, 1, 1)):
         """
         Add a circle to the plot at a given position.
 
         Parameters
         ----------
-        centre: tuple of floats
+        centre: tuple of float
             Coordinate (x, y) of the centre of the circle.
-        colour: tuple of floats
+        colour: tuple of float, default=(1, 1, 1, 1) (white)
             RBGA value of the colour of the circle.
         """
         # Add the circle
@@ -152,17 +193,17 @@ class Diagram(plt.Axes):
                                   zorder=2  # Add circles above lines
                                   ))
 
-    def my_add_line(self, xs, ys, colour):
+    def _add_line_(self, xs, ys, colour):
         """
         Add a line to the plot at given positions.
 
         Parameters
         ----------
-        xs: list of floats
+        xs: list of float
             List of the x-ordinates [x1, x2].
-        ys: list of floats
+        ys: list of float
             List of the y-ordinates [y1, y2].
-        colour: tuple of floats
+        colour: tuple of float
             RGBA value of the colour of the line.
         """
         self.plot(xs,
@@ -171,7 +212,7 @@ class Diagram(plt.Axes):
                   linewidth=colour[-1]
                   )
 
-    def add_layer_title(self, x):
+    def _add_layer_title(self, x):
         """
         Add a title for a layer to the plot at a given layer.
 
@@ -187,7 +228,7 @@ class Diagram(plt.Axes):
                   ha="center"
                   )
 
-    def add_perceptron(self, x, y, ypos=None, reverse=False):
+    def _add_perceptron(self, x, y, ypos=None, reverse=False):
         """
         Add a perceptron to the plot at a given position.
 
@@ -197,18 +238,18 @@ class Diagram(plt.Axes):
             The x-ordinate of the layer.
         y: int
             The y-ordinate of the perceptron, used as the index.
-        ypos: int
+        ypos: int, default=None
             The y-ordinate of the perceptron, used to place the perceptron.
-        reverse: bool
+        reverse: bool, default=False
             If it is a perceptron from the bottom when perceptrons are being skipped.
         """
         if ypos is None:
             ypos = y
         # Add a solid background circle
-        self.add_circle((x * self.layer_width + self.x_offset, ypos + 1))
+        self._add_circle((x * self.layer_width + self.x_offset, ypos + 1))
         # Add a circle in the same position where the colour represents the activation of the perceptron and opacity the bias
-        self.add_circle((x * self.layer_width + self.x_offset, ypos + 1),
-                        (1 - self.mlp.activations[x][y if not reverse else -y],
+        self._add_circle((x * self.layer_width + self.x_offset, ypos + 1),
+                         (1 - self.mlp.activations[x][y if not reverse else -y],
                          self.mlp.activations[x][y if not reverse else -y],
                          0,
                          1 if x == 0 else non_linear(sigmoid(self.mlp.biases[x - 1][y if not reverse else -y]))
@@ -219,11 +260,11 @@ class Diagram(plt.Axes):
             # Loop for each perceptron in the next layer
             for y2 in range(self.mlp.sizes[x + 1]):
                 # Draw a line between the centre of the two perceptrons
-                self.my_add_line([x * self.layer_width + self.x_offset,
-                                  (x + 1) * self.layer_width + self.x_offset],
-                                 [ypos + 1, 1 + (y2 if self.mlp.sizes[x + 1] >= self.max_height else
+                self._add_line_([x * self.layer_width + self.x_offset,
+                                 (x + 1) * self.layer_width + self.x_offset],
+                                [ypos + 1, 1 + (y2 if self.mlp.sizes[x + 1] >= self.max_height else
                                                  y2 + (self.max_height - self.mlp.sizes[x + 1]) / 2)],
-                                 (1 - self.mlp.activations[x][y if not reverse else -y],
+                                (1 - self.mlp.activations[x][y if not reverse else -y],
                                   self.mlp.activations[x][y if not reverse else -y],
                                   0,
                                   non_linear(sigmoid(self.mlp.weights[x][y if not reverse else -y][
@@ -237,20 +278,20 @@ class Diagram(plt.Axes):
         Display the plot.
         """
         # Add the background boxes
-        self.add_box((0, 0), self.layer_width, "Input Layer")
-        self.add_box((self.layer_width, 0), self.layer_width * (len(self.mlp.sizes) - 2), "Hidden Layer")
-        self.add_box((self.layer_width * (len(self.mlp.sizes) - 1), 0), self.layer_width, "Output Layer")
+        self._add_box((0, 0), self.layer_width, "Input Layer")
+        self._add_box((self.layer_width, 0), self.layer_width * (len(self.mlp.sizes) - 2), "Hidden Layer")
+        self._add_box((self.layer_width * (len(self.mlp.sizes) - 1), 0), self.layer_width, "Output Layer")
 
         # Loop for each layer
         for x in range(len(self.mlp.sizes)):
             # If the layer is too tall
             if self.mlp.sizes[x] > self.max_height:
 
-                self.add_layer_title(x)
+                self._add_layer_title(x)
 
                 # Add the top perceptrons
                 for y in range(self.max_height)[int(self.max_height / 2) + 1 + (self.max_height & 1):]:
-                    self.add_perceptron(x, y)
+                    self._add_perceptron(x, y)
 
                 # Add an ellipsis in the middle
                 for i in [-0.4, 0, 0.4]:
@@ -261,22 +302,21 @@ class Diagram(plt.Axes):
 
                 # Add the bottom perceptrons
                 for y in range(self.max_height)[:int(self.max_height / 2) - 1]:
-                    self.add_perceptron(x, y, True)
+                    self._add_perceptron(x, y, reverse=True)
 
-            # Otherwise
-
+            # Else if
             elif self.mlp.sizes[x] == self.max_height:
-                self.add_layer_title(x)
+                self._add_layer_title(x)
 
                 for y in range(self.mlp.sizes[x]):
-                    self.add_perceptron(x, y)
+                    self._add_perceptron(x, y)
 
             else:
-                self.add_layer_title(x)
+                self._add_layer_title(x)
 
                 # Add the perceptrons in the vertical centre
                 for y in range(self.mlp.sizes[x]):
-                    self.add_perceptron(x, y, ypos=(y + (self.max_height - self.mlp.sizes[x]) / 2))
+                    self._add_perceptron(x, y, ypos=(y + (self.max_height - self.mlp.sizes[x]) / 2))
 
         if self.output_labels is not None:
             for y, label in enumerate(self.output_labels):
@@ -296,190 +336,93 @@ class Diagram(plt.Axes):
                   )
         self.axis("off")
         self.set_aspect("equal")
+        self.set_title("Multilayer Perceptron", size=20)
 
 
 class MultilayerPerceptron:
     """
     The class for the multilayer perceptron.
 
+    Attributes
+    ----------
+    sizes: list of int
+        A list of the number of perceptrons in each layer.
+    activations: list of ndarray(dtype=np.float32, ndim=1)
+        A list of arrays storing the activation of each perceptron.
+        Accessed with activations[layer][index].
+    biases: list of ndarray(dtype=np.float32, ndim=1)
+        A list of arrays storing the bias of each perceptron.
+        Accessed with biases[layer][index].
+    weights: list of ndarray(dtype=np.float32, ndim=2)
+        A list of arrays storing the weights of each connection.
+        The length is one less than activations because the input and output layers only have one connection.
+        Accessed with weights[layer of left neuron][index of left neuron][index of right neuron]
+
     Methods
     -------
-
+    display(max_height=None, layer_width=6, output_labels=None)
+        Display a diagram of the multilayer perceptron using a `Diagram` object.
+    calculate_activations()
+        Calculate the activations of neurons in layers outside the input layer.
     """
 
     # Initialise the class with activations, biases and weights based on the entered size array
     def __init__(self, sizes):
-        self.sizes = sizes
+        """
+        Initialise the `MultilayerPerceptron` object with a given size.
 
+        Parameters
+        ----------
+        sizes: list of integers
+            A list of the number of perceptrons in each layer.
+        """
+        self.sizes = sizes
+        # Instance a generator object to create random numbers
         random_gen = np.random.default_rng(42)
+        # Create lists of arrays of random numbers
         self.activations = [random_gen.random(i, dtype=np.float32) for i in sizes]
         self.biases = [10 * random_gen.random(i, dtype=np.float32) - 5 for i in sizes[1:]]
         self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
 
-    def show_background(self, ax, max_height, layer_width):
-        x_offset = layer_width / 2
-
-        ax.add_patch(plt.Rectangle((0, 0),
-                                   layer_width,
-                                   max_height + 4.2,
-                                   color=(0, 0, 0, 0.05)
-                                   ))
-        ax.text(x_offset,
-                max_height + 3,
-                "Input Layer",
-                va="center",
-                ha="center"
-                )
-        ax.add_patch(plt.Rectangle((layer_width, 0),
-                                   layer_width * (len(self.sizes) - 2),
-                                   max_height + 4.2,
-                                   color=(0, 0, 0, 0.08)
-                                   ))
-        ax.text(layer_width * (len(self.sizes)) / 2,
-                max_height + 3,
-                "Hidden Layer" + ("s" if (len(self.sizes) - 2) > 1 else ""),
-                va="center",
-                ha="center"
-                )
-        ax.add_patch(plt.Rectangle((layer_width + layer_width * (len(self.sizes) - 2), 0),
-                                   layer_width,
-                                   max_height + 4.2,
-                                   color=(0, 0, 0, 0.05)
-                                   ))
-        ax.text(layer_width * (len(self.sizes) - 0.5),
-                max_height + 3,
-                "Output Layer",
-                va="center",
-                ha="center"
-                )
-
-    def show_perceptrons(self, ax, max_height, layer_width):
-
-        def draw_circle(colour):
-            ax.add_patch(plt.Circle((x * layer_width + x_offset,
-                                     y + 1 if self.sizes[x] >= max_height else y + (
-                                             max_height - self.sizes[x]) / 2 + 1),
-                                    0.4,
-                                    edgecolor=(colour[:-1], 1),
-                                    facecolor=colour,
-                                    zorder=10
-                                    ))
-
-        def show_perceptron(inverse=False):
-            try:
-                for y2 in range(max_height if self.sizes[x + 1] > max_height else self.sizes[x + 1]):
-                    ax.plot([x * layer_width + x_offset,
-                             (x + 1) * layer_width + x_offset],
-                            [y + 1 if self.sizes[x] >= max_height else y + (
-                                    max_height - self.sizes[x]) / 2 + 1,
-                             y2 + 1 if self.sizes[x + 1] >= max_height else y2 + (
-                                     max_height - self.sizes[x + 1]) / 2 + 1],
-                            color=(1 - self.activations[x][y], self.activations[x][y], 0,
-                                   non_linear(sigmoid(self.weights[x][y][y2]))),
-                            linewidth=non_linear(sigmoid(self.weights[x][y][y2]))
-                            )
-            except IndexError:
-                pass
-
-            draw_circle((1, 1, 1, 1))
-            draw_circle((1 - self.activations[x][y if not inverse else -y],
-                         self.activations[x][y if not inverse else -y],
-                         0,
-                         1 if x == 0 else non_linear(sigmoid(self.biases[x - 1][y if not inverse else -y]))
-                         ))
-
-        x_offset = layer_width / 2
-
-        for x in range(len(self.sizes)):
-            if self.sizes[x] > max_height:
-
-                ax.text(x * layer_width + x_offset,
-                        max_height + 1.4,
-                        f"{self.sizes[x]}",
-                        va="center",
-                        ha="center"
-                        )
-
-                for y in range(max_height)[:int(max_height / 2) - 1]:
-                    show_perceptron(inverse=True)
-
-                for i in [-0.4, 0, 0.4]:
-                    ax.add_patch(plt.Circle((x * layer_width + x_offset, (max_height + 1) / 2 + i),
-                                            0.08,
-                                            color="black"
-                                            ))
-
-                for y in range(max_height)[int(max_height / 2) + 1 + (max_height & 1):]:
-                    show_perceptron()
-            else:
-
-                ax.text(x * layer_width + x_offset,
-                        max_height + 1.4,
-                        f"{self.sizes[x]}",
-                        va="center",
-                        ha="center"
-                        )
-
-                for y in range(self.sizes[x]):
-                    show_perceptron()
-
     def display(self, max_height=None, layer_width=6, output_labels=None):
-        if max_height is None or max_height > max(self.sizes):
-            max_height = max(self.sizes)
+        """
+        Displays a diagram of the `MultilayerPerceptron` with a given look.
 
-        plt.style.use("./style.mlpstyle")
-        fig, ax = plt.subplots()
-
-        self.show_background(ax, max_height, layer_width)
-        self.show_perceptrons(ax, max_height, layer_width)
-
-        for y, label in enumerate(output_labels):
-            ax.text((len(self.sizes) - 0.5) * layer_width + 1,
-                    y + 1 + (max_height - self.sizes[-1]) / 2,
-                    label,
-                    ha="center",
-                    va="center"
-                    )
-
-        # Set limits so circles are visible
-        ax.set_xlim(0, len(self.sizes) * layer_width)
-        ax.set_ylim(0, max_height + 4.2)
-        ax.text(len(self.sizes) * layer_width / 2,
-                -1,
-                "Colour: Activation  (red: low, green: high)    Opacity: Weight/Bias",
-                ha="center"
-                )
-
-        # Ensure circles stay circular
-        ax.set_aspect("equal")
-
-        # Hide axes for a cleaner diagram look
-        ax.axis("off")
-
-        plt.title("Multilayer Perceptron", size=20)
-        plt.show()
-
-    def display_display(self, max_height=None, layer_width=6, output_labels=None):
+        Parameters
+        ----------
+        max_height: int, default=None
+            The maximum number of perceptrons shown in one layer.
+        layer_width: int, default=6
+            The width of each layer.
+        output_labels: list of str, default=None
+            A list containing the names of the output perceptrons.
+        """
+        # Ensure the parameters are valid
         assert isinstance(max_height, (int, float)) and max_height > 0, "max_height must be a positive, real number."
         assert isinstance(layer_width, (int, float)) and layer_width > 0, "layer_width must be a positive, real number."
         assert output_labels is None or (isinstance(output_labels, list) and all(
             isinstance(label, str) for label in output_labels)), "output_labels must be None or list of strings."
 
+        # Create a figure for the diagram
         fig = plt.figure(figsize=(12, 8))
+        # Create a Diagram object using the parameters and the figure
         diagram = Diagram(self, fig, max_height, layer_width, output_labels)
-        diagram.show_diagram()
 
-        plt.title("Multilayer Perceptron", size=20)
+        # Show the diagram
+        diagram.show_diagram()
         plt.show()
 
     def calculate_activations(self):
+        """Calculate the activations of neurons in layers outside the input layer."""
+        # Loop for each layer
         for x in range(1, len(self.sizes)):
+            # Calculate the new activations of that layer in parallel
             self.activations[x] = sigmoid(self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1])
 
 
 MLP = MultilayerPerceptron([748, 16, 16, 16, 10])
 MLP.calculate_activations()
-MLP.display_display(max_height=16, output_labels=[str(i) for i in range(1, 11)])
+MLP.display(max_height=16, output_labels=[str(i) for i in range(1, 11)])
 # MLP.display(max_height=16, output_labels=[str(i) for i in range(1, 11)])
 
 (training_images, training_outputs), (testing_images, testing_outputs) = load_dataset("./mnist-dataset")
