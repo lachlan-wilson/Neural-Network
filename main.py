@@ -12,36 +12,6 @@ import numpy as np
 import mnist_reader
 
 
-def load_dataset(input_path):
-    """
-    Read the MNIST dataset into training and testing data.
-
-    Parameters
-    ----------
-    input_path: str
-        The directory containing the MNIST .ubyte files.
-
-    Returns
-    -------
-    tuple
-        A nested tuple in the format ((x_train, y_train), (x_test, y_test)).
-
-    Notes
-    -----
-    .. [1] https://www.kaggle.com/code/hojjatk/read-mnist-dataset/notebook
-    """
-    training_images_filepath = join(input_path, 'train-images-idx3-ubyte/train-images-idx3-ubyte')
-    training_labels_filepath = join(input_path, 'train-labels-idx1-ubyte/train-labels-idx1-ubyte')
-    test_images_filepath = join(input_path, 't10k-images-idx3-ubyte/t10k-images-idx3-ubyte')
-    test_labels_filepath = join(input_path, 't10k-labels-idx1-ubyte/t10k-labels-idx1-ubyte')
-    plt.style.use("./style.mlpstyle")
-    mnist_dataloader = mnist_reader.MnistDataloader(training_images_filepath, training_labels_filepath,
-                                                    test_images_filepath,
-                                                    test_labels_filepath)
-    (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
-    return (x_train, y_train), (x_test, y_test)
-
-
 def non_linear(x):
     """
     Make most values in the middle but extreme ones more extreme.
@@ -431,8 +401,11 @@ class MultilayerPerceptron:
 
 
 MLP = MultilayerPerceptron([784, 16, 16, 16, 10])
+
+train_mnist = mnist_reader.MNIST()
+images, labels = train_mnist.load()
 # MLP.calculate_activations()
-MLP.display(max_height=16, output_labels=[str(i) for i in range(1, 11)])
 # MLP.display(max_height=16, output_labels=[str(i) for i in range(1, 11)])
 
-(training_images, training_outputs), (testing_images, testing_outputs) = load_dataset("./mnist-dataset")
+print(images[0, :, :])
+print(labels[0])
