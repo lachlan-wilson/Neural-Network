@@ -1,9 +1,6 @@
 # ----- Multilayer Perceptron -----
 #       ----- 31/03/2026 -----
 
-# Standard libraries
-from os.path import join
-
 # External libraries
 import matplotlib.pyplot as plt
 import numpy as np
@@ -98,7 +95,7 @@ class Diagram(plt.Axes):
         assert isinstance(mlp, MultilayerPerceptron), "mlp must be a MultilayerPerceptron."
         assert isinstance(__figure, plt.Figure), "__figure must be a Figure."
 
-        super().__init__(__figure, [0.1, 0.1, 0.8, 0.8], **kwargs)  #[0, 0.1, 1, 0.8]
+        super().__init__(__figure, [0.1, 0.1, 0.8, 0.8], **kwargs)
         __figure.add_axes(self)
 
         # Store variables as class attributes
@@ -228,14 +225,10 @@ class Diagram(plt.Axes):
 
         Parameters
         ----------
-        x: int
-            The x-ordinate of the layer.
-        y: int
-            The y-ordinate of the neuron, used as the index.
-        ypos: int, default=None
-            The y-ordinate of the neuron, used to place the neuron.
-        reverse: bool, default=False
-            If it is a neuron from the bottom when perceptrons are being skipped.
+        layer: int
+            The layer number for this neurons layer
+        neuron_index: int
+            The neuron's position within the layer
         """
         if self.neuron_coordinates[layer][neuron_index][1] != -1:
             neuron_centre = tuple(self.neuron_coordinates[layer][neuron_index, :])
@@ -327,7 +320,14 @@ class MultilayerPerceptron:
     weights: list of ndarray(dtype=np.float32, ndim=2)
         A list of arrays storing the weights of each connection.
         The length is one less than activations because the input and output layers only have one connection.
-        Accessed with weights[layer of left neuron][index of left neuron][index of right neuron]
+        Accessed with weights[layer of left neuron][index of left neuron][index of right neuron].
+    __figure: None or `Figure` object
+        The `Figure` that will contain the diagram and the image.
+    __diagram: None or `Diagram(Axes)` object
+        The `Diagram` of the mlp.
+    __image_axes: None or `Axes` object
+        The `Axes` that will contain the image
+
 
     Methods
     -------
@@ -356,12 +356,31 @@ class MultilayerPerceptron:
         self.biases = [10 * random_gen.random(size, dtype=np.float32) - 5 for size in sizes[1:]]
         self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
 
-    def display(self, max_height=None, layer_width=6, output_labels=None):
+        self.__figure = None
+        self.__image_axes = None
+        self.__diagram = None
+
+    def _show_image(self, image, label):
+        """
+        Display an MNIST image using matplotlib.
+
+        Parameters
+        ----------
+        image:
+        """
+        # cmap="gray" ensures it looks like a handwritten digit
+        self.__image_axes.imshow(image, cmap="gray")
+        # self.__image_axes.title(f"Label: {label}")
+        self.__image_axes.axis("off")
+
+    def display(self, dataset, max_height=None, layer_width=6, output_labels=None):
         """
         Displays a diagram of the `MultilayerPerceptron` with a given look.
 
         Parameters
         ----------
+        dataset: tuple of list
+            The dataset to be used.
         max_height: int, default=None
             The maximum number of perceptrons shown in one layer.
         layer_width: int, default=6
@@ -383,13 +402,16 @@ class MultilayerPerceptron:
 
         plt.style.use("./style.mlpstyle")  # Use the styles located at ./styles.mlpstyle
 
-        # Create a __figure for the diagram
-        fig = plt.figure(figsize=(len(self.sizes) * layer_width, max_height + 10))
+        # Create a figure for the diagram
+        self.__figure = plt.figure(figsize=(len(self.sizes) * layer_width, max_height + 10))
         # Create a Diagram object using the parameters and the __figure
-        diagram = Diagram(self, fig, max_height, layer_width, output_labels)
+        self.__diagram = Diagram(self, self.__figure, max_height, layer_width, output_labels)
 
         # Show the diagram
-        diagram.show_diagram()
+        self.__diagram.show_diagram()
+
+        self.__image_axes = plt.Axes(self.__figure, [0.1, 0.1, 0.8, 0.8])
+        self._show_image(dataset[0][0], dataset[1][0])
         plt.show()
 
     def calculate_activations(self):
@@ -403,9 +425,6 @@ class MultilayerPerceptron:
 MLP = MultilayerPerceptron([784, 16, 16, 16, 10])
 
 train_mnist = mnist_reader.MNIST()
-images, labels = train_mnist.load()
-# MLP.calculate_activations()
-# MLP.display(max_height=16, output_labels=[str(i) for i in range(1, 11)])
-
-print(images[0, :, :])
-print(labels[0])
+data = train_mnist.load()
+MLP.calculate_activations()
+MLP.display(data, max_height=16, output_labels=[str(i) for i in range(1, 11)])
