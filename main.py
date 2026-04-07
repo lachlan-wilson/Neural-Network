@@ -371,7 +371,8 @@ class MultilayerPerceptron:
         The `Diagram` of the mlp.
     __image_axes: None or `Axes` object
         The `Axes` that will contain the image
-
+    __image_object: None or array-like image
+        The `array-like image` that contains the image object for updating
 
     Methods
     -------
@@ -403,6 +404,7 @@ class MultilayerPerceptron:
         self.__figure = None
         self.__image_axes = None
         self.__diagram = None
+        self.__image_object = None
 
     def show_image(self, dataset, data_index=0):
         """
@@ -415,11 +417,14 @@ class MultilayerPerceptron:
         data_index: int, default=0
             The index of the data to be shown.
         """
-        # cmap="gray" ensures it looks like a handwritten digit
-        self.__image_axes.imshow(dataset[0][data_index], cmap="gray")
+        # Create a new image if there isn't one
+        if self.__image_object is None:
+            self.__image_object = self.__image_axes.imshow(dataset[0][data_index], cmap="gray")
+        else:
+            self.__image_object.set_data(dataset[0][data_index])
+
         self.__image_axes.set_title(f"Label: {dataset[1][data_index]}")
         self.__image_axes.axis("off")
-        plt.show()
 
     def display(self, dataset, max_height=None, layer_width=6, output_labels=None):
         """
@@ -463,13 +468,20 @@ class MultilayerPerceptron:
         plt.show()
 
     def update_display(self, dataset, data_index=0):
+        # Update the MLP
+        self.use_input(dataset[0][data_index])
+
         # Update the diagram
         self.__diagram.update_diagram()
-        self.__figure.canvas.draw_idle()
-        self.__figure.canvas.flush_events()
 
         # Update the image
         self.show_image(dataset, data_index)
+
+        # Refresh the canvas
+        self.__figure.canvas.draw_idle()
+        self.__figure.canvas.flush_events()
+        # Pause allowing the window to refresh
+        plt.pause(0.001)
 
     def calculate_activations(self):
         """Calculate the activations of neurons in layers outside the input layer."""
@@ -493,5 +505,4 @@ data = train_mnist.load()
 MLP.calculate_activations()
 MLP.display(data, max_height=16, output_labels=[str(i) for i in range(1, 11)])
 
-MLP.use_input(data[0][10])
 MLP.update_display(data, 10)
