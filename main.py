@@ -1,5 +1,6 @@
 # ----- Multilayer Perceptron -----
 #       ----- 31/03/2026 -----
+import time
 
 # External libraries
 import matplotlib.pyplot as plt
@@ -330,12 +331,14 @@ class Diagram(plt.Axes):
         Update the diagram to show the new activations.
         """
         for (layer, neuron_index), neuron in self.neurons.items():
-            neuron.set_facecolor((1 - self.mlp.activations[layer][neuron_index],  # Red
-                                  self.mlp.activations[layer][neuron_index],  # Green
-                                  0,  # Blue
-                                  1 if layer == 0 else non_linear(  # Alpha (Opacity)
-                                      sigmoid(self.mlp.biases[layer - 1][neuron_index]))
-                                  ))
+            colour = (1 - self.mlp.activations[layer][neuron_index],  # Red
+                      self.mlp.activations[layer][neuron_index],  # Green
+                      0,  # Blue
+                      1 if layer == 0 else non_linear(  # Alpha (Opacity)
+                          sigmoid(self.mlp.biases[layer - 1][neuron_index]))
+                      )
+            neuron.set_facecolor(colour)
+            neuron.set_edgecolor((colour[:-1], 1))
 
         for (layer, neuron_index, next_neuron_index), path in self.paths.items():
             colour = (1 - self.mlp.activations[layer][neuron_index],
@@ -465,7 +468,6 @@ class MultilayerPerceptron:
         self.__image_axes = plt.Axes(self.__figure, [0.05, 0.35, 0.2, 0.3])
         self.__figure.add_axes(self.__image_axes)
         self.show_image(dataset, 0)
-        plt.show()
 
     def update_display(self, dataset, data_index=0):
         # Update the MLP
@@ -478,10 +480,10 @@ class MultilayerPerceptron:
         self.show_image(dataset, data_index)
 
         # Refresh the canvas
-        self.__figure.canvas.draw_idle()
+        self.__figure.canvas.draw()
         self.__figure.canvas.flush_events()
         # Pause allowing the window to refresh
-        plt.pause(0.001)
+        plt.pause(0.1)
 
     def calculate_activations(self):
         """Calculate the activations of neurons in layers outside the input layer."""
@@ -505,4 +507,7 @@ data = train_mnist.load()
 MLP.calculate_activations()
 MLP.display(data, max_height=16, output_labels=[str(i) for i in range(1, 11)])
 
+MLP.update_display(data, 11)
 MLP.update_display(data, 10)
+
+time.sleep(10)
