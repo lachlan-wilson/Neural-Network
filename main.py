@@ -338,7 +338,7 @@ class Diagram(plt.Axes):
                           sigmoid(self.mlp.biases[layer - 1][neuron_index]))
                       )
             neuron.set_facecolor(colour)
-            neuron.set_edgecolor((colour[:-1], 1))
+            neuron.set_edgecolor((*colour[:-1], 1))
 
         for (layer, neuron_index, next_neuron_index), path in self.paths.items():
             colour = (1 - self.mlp.activations[layer][neuron_index],
@@ -507,7 +507,5 @@ data = train_mnist.load()
 MLP.calculate_activations()
 MLP.display(data, max_height=16, output_labels=[str(i) for i in range(1, 11)])
 
-MLP.update_display(data, 11)
 MLP.update_display(data, 10)
-
-time.sleep(10)
+MLP.update_display(data, 11)
