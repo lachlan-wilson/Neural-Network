@@ -64,7 +64,10 @@ class Diagram(plt.Axes):
         A list containing the names of the output neurons.
     neuron_coordinates: list of ndarray(dtype=float, nDim=2)
         A list containing arrays of the coordinates of each neuron.
-
+    neurons: dict
+        A dictionary containing data about neurons so that they can be updated
+    paths: dict
+        A dictionary containing data about paths so that they can be updated
     Methods
     -------
     show_diagram()
@@ -95,7 +98,7 @@ class Diagram(plt.Axes):
         assert isinstance(mlp, MultilayerPerceptron), "mlp must be a MultilayerPerceptron."
         assert isinstance(__figure, plt.Figure), "__figure must be a Figure."
 
-        super().__init__(__figure, [0.1, 0.1, 0.8, 0.8], **kwargs)
+        super().__init__(__figure, [0.3, 0.1, 0.65, 0.8], **kwargs)
         __figure.add_axes(self)
 
         # Store variables as class attributes
@@ -108,7 +111,6 @@ class Diagram(plt.Axes):
 
         # Store coordinates of neurons
         self.neuron_coordinates = [np.zeros((size, 2)) for size in self.mlp.sizes]
-
         # Loop for each layer with an index of x
         for x, layer in enumerate(self.neuron_coordinates):
             layer_height = self.mlp.sizes[x]
@@ -137,6 +139,10 @@ class Diagram(plt.Axes):
                 indices = np.arange(layer_height)
                 layer[:, 1] = indices + y_offset + 1
 
+        # Store the objects for updating
+        self.neurons = {}
+        self.paths = {}
+
     def _add_box(self, start, width, title):
         """
         Add a box to the plot at a given position.
@@ -164,9 +170,10 @@ class Diagram(plt.Axes):
                   ha="center"
                   )
 
-    def _add_circle(self, centre, colour=(1, 1, 1, 1)):
+    @staticmethod
+    def _circle_object(centre, colour=(1, 1, 1, 1)):
         """
-        Add a circle to the plot at a given position.
+        Create an object of a circle at a given position.
 
         Parameters
         ----------
@@ -174,18 +181,22 @@ class Diagram(plt.Axes):
             Coordinate (x, y) of the centre of the circle.
         colour: tuple of float, default=(1, 1, 1, 1) (white)
             RBGA value of the colour of the circle.
+
+        Returns
+        -------
+        `Circle`
+            A circle object with given properties, can be updated later.
         """
-        # Add the circle
-        self.add_patch(plt.Circle(centre,
-                                  0.4,
-                                  edgecolor=(colour[:-1], 1),
-                                  facecolor=colour,
-                                  zorder=10  # Add circles above lines
-                                  ))
+        return plt.Circle(centre,
+                          0.4,
+                          edgecolor=(colour[:-1], 1),
+                          facecolor=colour,
+                          zorder=10  # Add circles above lines
+                          )
 
     def _add_line_(self, xs, ys, colour):
         """
-        Add a line to the plot at given positions.
+        Add a line to the plot at given positions and return the line object for updating.
 
         Parameters
         ----------
@@ -195,13 +206,20 @@ class Diagram(plt.Axes):
             List of the y-ordinates [y1, y2].
         colour: tuple of float
             RGBA value of the colour of the line.
+
+        Returns
+        -------
+        `Line2D`
+            A line object with given properties, can be updated later.
         """
-        self.plot(xs,
-                  ys,
-                  color=colour,
-                  linewidth=colour[-1] * 3,
-                  zorder=1
-                  )
+        # "," unpacks the tuple of a single Line object into only the line
+        line, = self.plot(xs,
+                          ys,
+                          color=colour,
+                          linewidth=colour[-1] * 3,
+                          zorder=1
+                          )
+        return line
 
     def _add_layer_title(self, x):
         """
@@ -233,14 +251,17 @@ class Diagram(plt.Axes):
         if self.neuron_coordinates[layer][neuron_index][1] != -1:
             neuron_centre = tuple(self.neuron_coordinates[layer][neuron_index, :])
             # Add a solid background circle
-            self._add_circle(neuron_centre)
+            self.add_patch(self._circle_object(neuron_centre))
             # Add a circle in the same position where the colour represents the activation of the neuron and opacity the bias
-            self._add_circle(neuron_centre,
-                             (1 - self.mlp.activations[layer][neuron_index],    # Red
-                              self.mlp.activations[layer][neuron_index],        # Green
-                              0,                                                # Blue
-                              1 if layer == 0 else non_linear(sigmoid(self.mlp.biases[layer - 1][neuron_index]))    # Alpha (Opacity)
-                              ))
+            neuron = self._circle_object(neuron_centre,
+                                         (1 - self.mlp.activations[layer][neuron_index],  # Red
+                                          self.mlp.activations[layer][neuron_index],  # Green
+                                          0,  # Blue
+                                          1 if layer == 0 else non_linear(  # Alpha (Opacity)
+                                              sigmoid(self.mlp.biases[layer - 1][neuron_index]))
+                                          ))
+            self.add_patch(neuron)
+            self.neurons[(layer, neuron_index)] = neuron
 
             # If it's not the output layer
             if layer < len(self.mlp.sizes) - 1:
@@ -248,13 +269,15 @@ class Diagram(plt.Axes):
                 for next_neuron_index in range(self.mlp.sizes[layer + 1]):
                     if self.neuron_coordinates[layer + 1][next_neuron_index][1] != -1:
                         # Draw a line between the centre of the two perceptrons
-                        self._add_line_([neuron_centre[0], self.neuron_coordinates[layer + 1][next_neuron_index][0]],
-                                        [neuron_centre[1], self.neuron_coordinates[layer + 1][next_neuron_index][1]],
-                                        (1 - self.mlp.activations[layer][neuron_index],
-                                         self.mlp.activations[layer][neuron_index],
-                                         0,
-                                         non_linear(sigmoid(self.mlp.weights[layer][neuron_index][next_neuron_index]))
-                                         ))
+                        line = self._add_line_(
+                            [neuron_centre[0], self.neuron_coordinates[layer + 1][next_neuron_index][0]],
+                            [neuron_centre[1], self.neuron_coordinates[layer + 1][next_neuron_index][1]],
+                            (1 - self.mlp.activations[layer][neuron_index],
+                             self.mlp.activations[layer][neuron_index],
+                             0,
+                             non_linear(sigmoid(self.mlp.weights[layer][neuron_index][next_neuron_index]))
+                             ))
+                        self.paths[(layer, neuron_index, next_neuron_index)] = line
 
     def show_diagram(self):
         """
@@ -301,6 +324,27 @@ class Diagram(plt.Axes):
         self.grid("off")
         self.set_aspect("equal")
         self.set_title("Multilayer Perceptron", size=60)
+
+    def update_diagram(self):
+        """
+        Update the diagram to show the new activations.
+        """
+        for (layer, neuron_index), neuron in self.neurons.items():
+            neuron.set_facecolor((1 - self.mlp.activations[layer][neuron_index],  # Red
+                                  self.mlp.activations[layer][neuron_index],  # Green
+                                  0,  # Blue
+                                  1 if layer == 0 else non_linear(  # Alpha (Opacity)
+                                      sigmoid(self.mlp.biases[layer - 1][neuron_index]))
+                                  ))
+
+        for (layer, neuron_index, next_neuron_index), path in self.paths.items():
+            colour = (1 - self.mlp.activations[layer][neuron_index],
+                      self.mlp.activations[layer][neuron_index],
+                      0,
+                      non_linear(sigmoid(self.mlp.weights[layer][neuron_index][next_neuron_index]))
+                      )
+            path.set_color(colour)
+            path.set_linewidth(colour[-1] * 3)
 
 
 class MultilayerPerceptron:
@@ -360,18 +404,22 @@ class MultilayerPerceptron:
         self.__image_axes = None
         self.__diagram = None
 
-    def _show_image(self, image, label):
+    def show_image(self, dataset, data_index=0):
         """
         Display an MNIST image using matplotlib.
 
         Parameters
         ----------
-        image:
+        dataset: tuple[Any, Union[array, array[Union[int, float, str]]]]
+            The MNIST dataset data.
+        data_index: int, default=0
+            The index of the data to be shown.
         """
         # cmap="gray" ensures it looks like a handwritten digit
-        self.__image_axes.imshow(image, cmap="gray")
-        # self.__image_axes.title(f"Label: {label}")
+        self.__image_axes.imshow(dataset[0][data_index], cmap="gray")
+        self.__image_axes.set_title(f"Label: {dataset[1][data_index]}")
         self.__image_axes.axis("off")
+        plt.show()
 
     def display(self, dataset, max_height=None, layer_width=6, output_labels=None):
         """
@@ -389,7 +437,8 @@ class MultilayerPerceptron:
             A list containing the names of the output perceptrons.
         """
         # Ensure the parameters are valid
-        assert max_height is None or isinstance(max_height, (int, float)) and max_height > 0, "max_height must be None or a positive, real number."
+        assert max_height is None or isinstance(max_height, (
+            int, float)) and max_height > 0, "max_height must be None or a positive, real number."
         assert isinstance(layer_width, (int, float)) and layer_width > 0, "layer_width must be a positive, real number."
         assert output_labels is None or (isinstance(output_labels, list) and all(
             isinstance(label, str) for label in output_labels)), "output_labels must be None or list of strings."
@@ -400,19 +449,27 @@ class MultilayerPerceptron:
         else:
             max_height = max_height
 
-        plt.style.use("./style.mlpstyle")  # Use the styles located at ./styles.mlpstyle
-
         # Create a figure for the diagram
-        self.__figure = plt.figure(figsize=(len(self.sizes) * layer_width, max_height + 10))
+        self.__figure = plt.figure(figsize=(len(self.sizes) * layer_width + 10, max_height + 10))
         # Create a Diagram object using the parameters and the __figure
         self.__diagram = Diagram(self, self.__figure, max_height, layer_width, output_labels)
 
         # Show the diagram
         self.__diagram.show_diagram()
 
-        self.__image_axes = plt.Axes(self.__figure, [0.1, 0.1, 0.8, 0.8])
-        self._show_image(dataset[0][0], dataset[1][0])
+        self.__image_axes = plt.Axes(self.__figure, [0.05, 0.35, 0.2, 0.3])
+        self.__figure.add_axes(self.__image_axes)
+        self.show_image(dataset, 0)
         plt.show()
+
+    def update_display(self, dataset, data_index=0):
+        # Update the diagram
+        self.__diagram.update_diagram()
+        self.__figure.canvas.draw_idle()
+        self.__figure.canvas.flush_events()
+
+        # Update the image
+        self.show_image(dataset, data_index)
 
     def calculate_activations(self):
         """Calculate the activations of neurons in layers outside the input layer."""
@@ -421,6 +478,13 @@ class MultilayerPerceptron:
             # Calculate the new activations of that layer in parallel
             self.activations[x] = sigmoid(self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1])
 
+    def use_input(self, image):
+        self.activations[0] = (image.flatten() / 255).astype(np.float32)
+        self.calculate_activations()
+
+
+plt.style.use("./style.mlpstyle")  # Use the styles located at ./styles.mlpstyle
+plt.ion()
 
 MLP = MultilayerPerceptron([784, 16, 16, 16, 10])
 
@@ -428,3 +492,6 @@ train_mnist = mnist_reader.MNIST()
 data = train_mnist.load()
 MLP.calculate_activations()
 MLP.display(data, max_height=16, output_labels=[str(i) for i in range(1, 11)])
+
+MLP.use_input(data[0][10])
+MLP.update_display(data, 10)
