@@ -1,6 +1,5 @@
 # ----- Multilayer Perceptron -----
 #       ----- 31/03/2026 -----
-import time
 
 # External libraries
 import matplotlib.pyplot as plt
@@ -493,7 +492,7 @@ class MultilayerPerceptron:
             self.activations[x] = sigmoid(self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1])
 
     def use_input(self, image):
-        self.activations[0] = (image.flatten() / 255).astype(np.float32)
+        self.activations[0] = 1 - image.flatten().astype(np.float32)
         self.calculate_activations()
 
 
@@ -509,3 +508,5 @@ MLP.display(data, max_height=16, output_labels=[str(i) for i in range(1, 11)])
 
 MLP.update_display(data, 10)
 MLP.update_display(data, 11)
+plt.ioff()
+plt.show()
