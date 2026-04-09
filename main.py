@@ -48,6 +48,10 @@ def sigmoid(x):
     return 1 / (1 + np.e ** -x)
 
 
+def sigmoid_derivative(x):
+    return sigmoid(x) * (1 - x)
+
+
 class Diagram(plt.Axes):
     """
     Axes that plots a diagram of the multilayer perceptron based on a `MultiLayerPerceptron` object.
@@ -384,10 +388,13 @@ class MultilayerPerceptron:
     sizes: list of int
         A list of the number of perceptrons in each layer.
     activations: list of ndarray(dtype=np.float32, ndim=1)
-        A list of arrays storing the activation of each perceptron.
+        A list of arrays storing the activation of each neuron.
+        Accessed with activations[layer][index].
+    weighted_inputs: list of ndarray(dtype=np.float32, ndim=1)
+        A list of arrays storing the weighted input to each neuron (activation before sigmoid function).
         Accessed with activations[layer][index].
     biases: list of ndarray(dtype=np.float32, ndim=1)
-        A list of arrays storing the bias of each perceptron.
+        A list of arrays storing the bias of each neuron.
         Accessed with biases[layer][index].
     weights: list of ndarray(dtype=np.float32, ndim=2)
         A list of arrays storing the weights of each connection.
@@ -405,6 +412,8 @@ class MultilayerPerceptron:
         The image of the number for a given dataset index
     label: str
         The label for the image of the number for a given dataset index
+    costs: None or ndarray(ndim = 1)
+        An array of costs of for each dataset index
 
     Methods
     -------
@@ -440,6 +449,7 @@ class MultilayerPerceptron:
         random_gen = np.random.default_rng(42)
         # Create lists of arrays of random numbers
         self.activations = [random_gen.random(size, dtype=np.float32) for size in sizes]
+        self.weighted_inputs = [random_gen.random(size, dtype=np.float32) for size in sizes[1:]]
         # self.activations = [np.linspace(0.05, 0.95, size, dtype=np.float32) for size in sizes]
         self.biases = [10 * random_gen.random(size, dtype=np.float32) - 5 for size in sizes[1:]]
         self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
@@ -452,7 +462,7 @@ class MultilayerPerceptron:
         self.image = None
         self.label = None
 
-        self.costs = np.zeros(len(self.dataset[0]))
+        self.costs = None
 
     def show_image(self):
         """Display an MNIST image using matplotlib."""
@@ -539,25 +549,29 @@ class MultilayerPerceptron:
         # Loop for each layer
         for x in range(1, len(self.sizes)):
             # Calculate the new activations of that layer in parallel
-            self.activations[x] = sigmoid(self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1])
+            self.weighted_inputs[x - 1] = self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1]
+            self.activations[x] = sigmoid(self.weighted_inputs[x - 1])
 
-    def use_input(self, batch=None, index=0):
+    def use_input(self, image=None, label=None):
         """
         Update the input layer to use the data.
 
         Parameters
         ----------
-        batch: None or tuple[Any, Union[array, array[Union[int, float, str]]]], default=None
-            A section of the MNIST dataset.
-        index: int, default=0
-            The index of the data to be displayed.
+        image: None or array-like-image:
+            The image of the number to be used.
+        label: None or int
+            The label of the number to be used.
         """
-        if batch is None:
-            batch = self.dataset
+        if image is None:
+            image = self.dataset[0][0]
 
-        self.image = batch[0][index]
-        self.label = batch[1][index]
-        self.activations[0] = 1 - batch[0][index].flatten().astype(np.float32)
+        if label is None:
+            label = self.dataset[1][0]
+
+        self.image = image
+        self.label = label
+        self.activations[0] = 1 - image.flatten().astype(np.float32)
         self.calculate_activations()
 
     def cost(self):
@@ -574,6 +588,8 @@ class MultilayerPerceptron:
         return ((self.activations[-1] - answer) ** 2).sum()
 
     def average_cost(self, batch):
+        self.costs = np.zeros(len(batch[0]))
+
         for i in range(len(batch[0])):
             self.use_input(batch, i)
             self.costs[i] = self.cost()
@@ -583,25 +599,143 @@ class MultilayerPerceptron:
         images = np.array_split(self.dataset[0], int(len(self.dataset[0]) / 100))
         labels = np.array_split(self.dataset[1], int(len(self.dataset[1]) / 100))
 
-        for image, label in zip(images, labels)
+        for image_batch, label_batch in zip(images, labels):
+            for image, label in zip(image_batch, label_batch):
+                self.use_input(image, label)
+                self.calculate_activations()
+                cost = self.cost()
+
+
+class NewMultilayerPerceptron:
+
+    def __init__(self, sizes):
+        """
+        Initialise the `MultilayerPerceptron` object with a given size.
+
+        Parameters
+        ----------
+        sizes: list of integers
+            A list of the number of perceptrons in each layer.
+        """
+        self.sizes = sizes
+
+        # Instance a generator object to create random numbers
+        random_gen = np.random.default_rng(42)
+        # Create lists of arrays of random numbers
+        self.activations = [random_gen.random(size, dtype=np.float32) for size in sizes]
+        self.biases = [10 * random_gen.random(size, dtype=np.float32) - 5 for size in sizes[1:]]
+        self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
+
+        # Initialises variables to store objects needed for the diagram
+        self.__figure = None
+        self.__image_axes = None
+        self.__diagram = None
+        self.__image_object = None
+
+    def train(self, dataset, learning_rate):
+
+        def forward_pass(image):
+            # Set the input layer to match the image
+            self.activations[0] = 1 - image.flatten().astype(np.float32)
+
+            # The weighted input (activation before sigmoid) for each neuron not in the input layer
+            weighted_inputs = [np.zeros(size, dtype=np.float32) for size in self.sizes[1:]]
+
+            # Loop for each layer except the input layer
+            for x in range(1, len(self.sizes)):
+                # z^L = A^L-1 * W^L + b^L is repeated for all neurons
+                # Where L is the layer,
+                # A is a vector of all the activations in the previous layer and
+                # W is a vector of the weights for this neuron
+                weighted_inputs[x - 1] = self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1]
+                # a^L = σ(z^L)
+                self.activations[x] = sigmoid(weighted_inputs[x - 1])
+
+            return weighted_inputs
+
+        def backpropagation(weighted_inputs, label):
+            # Vector of the desired output (y)
+            desired_output = np.zeros(self.sizes[-1], dtype=np.float32)
+            desired_output[label] = 1.0
+
+            # Initialise vectors to store the changes in weights and biases
+            weight_gradients = [np.zeros_like(w) for w in self.weights]
+            bias_gradients = [np.zeros_like(b) for b in self.biases]
+
+            # Cost: C = sum((a-y)^2
+            # Partial derivative dC/da: 2(a-y)
+            # Where a is the output layer activations vector
+            # and y is the output vector
+            dC_da_ouput = 2 * (self.activations[-1] - desired_output)
+
+            # Partial derivative da/dz: σ'(z)
+            da_dz_output = sigmoid_derivative(weighted_inputs[-1])
+
+            # Intermediate step to getting the changes for bias and weights
+            layer_delta = dC_da_ouput * da_dz_output
+
+            # Storing the wanted changes in biases and weights
+            bias_gradients[-1] = layer_delta
+            weight_gradients[-1] = np.outer(self.activations[-2], layer_delta)
+
+            # Looping backwards through the layers
+            for layer_offset in range(2, len(self.sizes)):
+                # Similar to above but for the previous layers
+                da_dz = sigmoid_derivative(weighted_inputs[-layer_offset])
+
+                layer_delta = (self.weights[-layer_offset + 1] @ layer_delta) * da_dz
+
+                bias_gradients[-layer_offset] = layer_delta
+                weight_gradients[-1] = np.outer(self.activations[-layer_offset - 1], layer_delta)
+
+            return weight_gradients, bias_gradients
+
+        batch_size = 100
+        image_batches = np.array_split(dataset[0], int(len(dataset[0]) / batch_size))
+        label_batches = np.array_split(dataset[1], int(len(dataset[1]) / batch_size))
+
+        for image_batch, label_batch in zip(image_batches, label_batches):
+            summed_weight_gradients = [np.zeros_like(w, dtype=np.float32) for w in self.weights]
+            summed_bias_gradients = [np.zeros_like(b, dtype=np.float32) for b in self.biases]
+
+            for batch, (image, label) in enumerate(zip(image_batch, label_batch)):
+                weighted_inputs = forward_pass(image)
+                weight_gradients, bias_gradients = backpropagation(weighted_inputs, label)
+
+                for layer in range(len(self.sizes) - 1):
+                    summed_weight_gradients[layer] += weight_gradients[layer]
+                    summed_bias_gradients[layer] += bias_gradients[layer]
+
+            for layer in range(len(self.sizes) - 1):
+                self.weights[layer] -= learning_rate * (summed_weight_gradients[layer] / batch_size)
+                self.biases[layer] -= learning_rate * (summed_bias_gradients[layer] / batch_size)
+
+    def test(self, dataset, show_progress=True):
+        images = dataset[0]
+        labels = dataset[1]
+        correct = 0
+        total = len(images)
+
+        for i, (image, label) in enumerate(zip(images, labels)):
+            self.activations[0] = 1 - image.flatten().astype(np.float32)
+
+            for x in range(1, len(self.sizes)):
+                self.activations[x] = sigmoid(self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1])
+
+            if label == np.argmax(self.activations[-1]):
+                correct += 1
+
+            if show_progress:
+                print(f"\r Pass: {i}/{total}", end="")
+
+        return correct/total
 
 
 train_mnist = mnist_reader.MNIST()
 data = train_mnist.load()
 
-MLP = MultilayerPerceptron([784, 16, 16, 16, 10], data)
+MLP = NewMultilayerPerceptron([784, 16, 16, 10])
 
-# print(MLP.average_cost())
-
-MLP.run_stochastic_gradient_descent()
-
-# plt.style.use("./style.mlpstyle")  # Use the styles located at ./styles.mlpstyle
-# plt.ion()
-#
-# MLP.display(max_height=16, output_labels=[str(i) for i in range(1, 11)])
-#
-# for i in range(len(data[0])):
-#     MLP.update_display(data, i)
-#
-# plt.ioff()
-# plt.show()
+print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
+MLP.train(data, 1)
+print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
