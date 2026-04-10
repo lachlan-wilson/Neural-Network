@@ -33,24 +33,39 @@ def non_linear(x):
 def sigmoid(x):
     """
     Make any value a value between 0 and 1 exclusive.
-    Follows function f(x) = 1/(1+e^-x)
+    Follows function σ(x) = 1/(1+e^-x)
 
     Parameters
     ----------
-    x: ndarray(dtype=float, ndim=1)
-        A numpy array of the x values
+    x: ndarray(dtype=float, ndim=1) or float
+        The value(s) that will be put through the function.
 
     Returns
     -------
-    ndarray(dtype=float, ndim=1)
-        A numpy array of values between 0 and 1 inclusive.
+    ndarray(dtype=float, ndim=1) or float
+        The output(s) of the function
     """
     x = np.clip(x, -500, 500)
     return 1 / (1 + np.exp(-x))
 
 
 def sigmoid_derivative(x):
-    return sigmoid(x) * (1 - x)
+    """
+    The derivative of the sigmoid function.
+    Follow function σ'(x) = σ(x) * (1-σ(x))
+
+    Parameters
+    ----------
+    x: ndarray(dtype=float, ndim=1) or float
+        The value(s) that will be put through the function.
+
+    Returns
+    -------
+    ndarray(dtype=float, ndim=1) or float
+        The output(s) of the function
+    """
+    s = sigmoid(x)
+    return s * (1 - s)
 
 
 class Diagram(plt.Axes):
@@ -100,8 +115,8 @@ class Diagram(plt.Axes):
             The maximum number of neurons shown in one layer.
         layer_width: int, default=6
             The width of each layer.
-        output_labels: list of str, default=
-            A list containing the names of the output neurons
+        output_labels: list of str, default=None
+            A list containing the names of the output neurons.
         **kwargs: dict
             Extra arguments to `Figure`: refer to `Figure` documentation for a
             list of all possible arguments.
@@ -624,8 +639,8 @@ class NewMultilayerPerceptron:
         random_gen = np.random.default_rng()
         # Create lists of arrays of random numbers
         self.activations = [random_gen.random(size, dtype=np.float32) for size in sizes]
-        self.biases = [10 * random_gen.random(size, dtype=np.float32) - 5 for size in sizes[1:]]
-        self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
+        self.biases = [random_gen.random(size, dtype=np.float32) for size in sizes[1:]]
+        self.weights = [random_gen.random((sizes[i], sizes[i + 1])) / np.sqrt(sizes[i]) for i in range(len(sizes) - 1)]
 
         # Initialises variables to store objects needed for the diagram
         self.__figure = None
@@ -633,9 +648,35 @@ class NewMultilayerPerceptron:
         self.__diagram = None
         self.__image_object = None
 
-    def train(self, dataset, learning_rate):
+    def train(self, dataset, learning_rate, batch_size=100):
+        """
+        Train the network, looping through all the training data once.
+        Updates the weights and biases of the network to better classify digits.
 
+        Parameters
+        ----------
+        dataset: tuple[Any, Union[array, array[Union[int, float, str]]]]
+            A tuple of arrays of images and labels.
+        learning_rate: float
+            The size of a gradient descent step.
+        batch_size: int
+            The size of a mini-batch
+        """
         def forward_pass(image):
+            """
+            Calculate the activations of each neuron based on the input neurons from the image.
+
+            Parameters
+            ----------
+            image: array-like image
+                The 28x28 image of a number.
+
+            Returns
+            -------
+            weighted_inputs: list of ndarray(dtype=np.float32, ndim=1)
+                The inputs each neuron before they're based through the sigmoid function.
+                Uses when training the model, often called `z`.
+            """
             # Set the input layer to match the image
             self.activations[0] = 1 - image.flatten().astype(np.float32)
 
@@ -655,6 +696,25 @@ class NewMultilayerPerceptron:
             return weighted_inputs
 
         def backpropagation(weighted_inputs, label):
+            """
+            Runs the backpropogation algorithm on the current networks activations and the desired output.
+
+            Parameters
+            ----------
+            weighted_inputs: list of ndarray(dtype=np.float32, ndim=1)
+                The inputs each neuron before they're based through the sigmoid function.
+                Uses when training the model, often called `z`.
+            label: int
+                The desired "guess" of the network.
+
+            Returns
+            -------
+            weight_gradients: list of ndarray(dtype=np.float32, ndim=1)
+                A vector of the changes that should be made to weights for this pass.
+            bias_gradients: list of ndarray(dtype=np.float32, ndim=2)
+                A vector of the changes that should be made to biases for this pass.
+            """
+
             # Vector of the desired output (y)
             desired_output = np.zeros(self.sizes[-1], dtype=np.float32)
             desired_output[label] = 1.0
@@ -667,13 +727,13 @@ class NewMultilayerPerceptron:
             # Partial derivative dC/da: 2(a-y)
             # Where a is the output layer activations vector
             # and y is the output vector
-            dC_da_ouput = 2 * (self.activations[-1] - desired_output)
+            dC_da_output = 2 * (self.activations[-1] - desired_output)
 
             # Partial derivative da/dz: σ'(z)
             da_dz_output = sigmoid_derivative(weighted_inputs[-1])
 
             # Intermediate step to getting the changes for bias and weights
-            layer_delta = dC_da_ouput * da_dz_output
+            layer_delta = dC_da_output * da_dz_output
 
             # Storing the wanted changes in biases and weights
             bias_gradients[-1] = layer_delta
@@ -691,27 +751,51 @@ class NewMultilayerPerceptron:
 
             return weight_gradients, bias_gradients
 
-        batch_size = 100
-        image_batches = np.array_split(dataset[0], int(len(dataset[0]) / batch_size))
-        label_batches = np.array_split(dataset[1], int(len(dataset[1]) / batch_size))
+        images = dataset[0]
+        labels = dataset[1]
+        num_samples = len(images)
 
+        # Shuffle images and labels
+        permutation = np.random.permutation(num_samples).tolist()
+        shuffled_images = images[permutation]
+        shuffled_labels = [labels[i] for i in permutation]
+
+        # Split images and labels into mini-batches for efficiency
+        image_batches = np.array_split(shuffled_images, num_samples / batch_size)
+        label_batches = np.array_split(shuffled_labels, num_samples / batch_size)
+
+        # Loop for each image-label pair
         for image_batch, label_batch in zip(image_batches, label_batches):
+            # Initialise vectors for the total changes and weights for this batch
             summed_weight_gradients = [np.zeros_like(w, dtype=np.float32) for w in self.weights]
             summed_bias_gradients = [np.zeros_like(b, dtype=np.float32) for b in self.biases]
 
-            for batch, (image, label) in enumerate(zip(image_batch, label_batch)):
+            # For each image and label in the batch
+            for image, label in zip(image_batch, label_batch):
+                # Update the activations for that image
                 weighted_inputs = forward_pass(image)
+                # Calculate the vectors for the changes in weights and biases
                 weight_gradients, bias_gradients = backpropagation(weighted_inputs, label)
 
+                # Add these to the total changes
                 for layer in range(len(self.sizes) - 1):
                     summed_weight_gradients[layer] += weight_gradients[layer]
                     summed_bias_gradients[layer] += bias_gradients[layer]
 
+            # Average the changes and then apply them
             for layer in range(len(self.sizes) - 1):
-                self.weights[layer] -= learning_rate * (summed_weight_gradients[layer] / batch_size)
-                self.biases[layer] -= learning_rate * (summed_bias_gradients[layer] / batch_size)
+                self.weights[layer] -= learning_rate * (summed_weight_gradients[layer] / len(image_batch))
+                self.biases[layer] -= learning_rate * (summed_bias_gradients[layer] / len(image_batch))
 
-    def test(self, dataset, show_progress=True):
+        total_cost = 0
+        for image, label in zip(images, labels):
+            _ = forward_pass(image)
+            answer = np.zeros(self.sizes[-1], dtype=np.float32)
+            answer[label] = 1
+            total_cost += ((self.activations[-1] - answer) ** 2).sum()
+        print(f"Cost: {total_cost / num_samples}")
+
+    def test(self, dataset):
         images = dataset[0]
         labels = dataset[1]
         correct = 0
@@ -726,9 +810,6 @@ class NewMultilayerPerceptron:
             if label == np.argmax(self.activations[-1]):
                 correct += 1
 
-            if show_progress:
-                print(f"\r Pass: {i}/{total}", end="")
-
         return correct/total
 
 
@@ -739,6 +820,6 @@ MLP = NewMultilayerPerceptron([784, 16, 16, 10])
 
 print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
 for i in range(50):
-    print(f"\r Epoch: {i}/50", end="")
-    MLP.train(data, 0.1)
+    print(f"Epoch: {i}/50")
+    MLP.train(data, 0.02)
 print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
