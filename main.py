@@ -45,7 +45,8 @@ def sigmoid(x):
     ndarray(dtype=float, ndim=1)
         A numpy array of values between 0 and 1 inclusive.
     """
-    return 1 / (1 + np.e ** -x)
+    x = np.clip(x, -500, 500)
+    return 1 / (1 + np.exp(-x))
 
 
 def sigmoid_derivative(x):
@@ -620,7 +621,7 @@ class NewMultilayerPerceptron:
         self.sizes = sizes
 
         # Instance a generator object to create random numbers
-        random_gen = np.random.default_rng(42)
+        random_gen = np.random.default_rng()
         # Create lists of arrays of random numbers
         self.activations = [random_gen.random(size, dtype=np.float32) for size in sizes]
         self.biases = [10 * random_gen.random(size, dtype=np.float32) - 5 for size in sizes[1:]]
@@ -686,7 +687,7 @@ class NewMultilayerPerceptron:
                 layer_delta = (self.weights[-layer_offset + 1] @ layer_delta) * da_dz
 
                 bias_gradients[-layer_offset] = layer_delta
-                weight_gradients[-1] = np.outer(self.activations[-layer_offset - 1], layer_delta)
+                weight_gradients[-layer_offset] = np.outer(self.activations[-layer_offset - 1], layer_delta)
 
             return weight_gradients, bias_gradients
 
@@ -737,5 +738,7 @@ data = train_mnist.load()
 MLP = NewMultilayerPerceptron([784, 16, 16, 10])
 
 print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
-MLP.train(data, 1)
+for i in range(50):
+    print(f"\r Epoch: {i}/50", end="")
+    MLP.train(data, 0.1)
 print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
