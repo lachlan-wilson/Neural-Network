@@ -636,11 +636,11 @@ class NewMultilayerPerceptron:
         self.sizes = sizes
 
         # Instance a generator object to create random numbers
-        random_gen = np.random.default_rng(my_other_var)
+        random_gen = np.random.default_rng(42)
         # Create lists of arrays of random numbers
         self.activations = [np.zeros(size, dtype=np.float32) for size in sizes]
         self.biases = [np.zeros(size, dtype=np.float32) for size in sizes[1:]]
-        self.weights = [(random_gen.random((sizes[i], sizes[i + 1]), dtype=np.float32) - 0.5) * my_var for i in range(len(sizes) - 1)]
+        self.weights = [(random_gen.random((sizes[i], sizes[i + 1]), dtype=np.float32) - 0.5) * 20 for i in range(len(sizes) - 1)]
 
         # Initialises variables to store objects needed for the diagram
         self.__figure = None
@@ -830,42 +830,18 @@ class NewMultilayerPerceptron:
                 # Increment correct
                 correct += 1
 
-            answers[np.argmax(self.activations[-1])] += 1
+            # answers[np.argmax(self.activations[-1])] += 1
 
-        return correct / total, answers
+        return correct / total
 
 
 train_mnist = mnist_reader.MNIST()
 data = train_mnist.load()
 
-# MLP = NewMultilayerPerceptron([784, 16, 16, 10])
-for my_var in [35]:
-    all_answers = []
-    for my_other_var in [40, 41, 42]:
-        MLP = NewMultilayerPerceptron([784, 16, 16, 10])
-        accuracy, answers = MLP.test(data)
-        all_answers += answers
-    print(f"Standard deviation of answers: {np.std(all_answers)}. my_var={my_var}")
+MLP = NewMultilayerPerceptron([784, 16, 16, 10])
 
-# Response:
-# Standard deviation of answers: 16754.053020090392. my_var=1
-# Standard deviation of answers: 14838.301407730827. my_var=2
-# Standard deviation of answers: 12376.675199745689. my_var=5
-# Standard deviation of answers: 11399.08317950761. my_var=10
-# Standard deviation of answers: 9954.021113767709. my_var=15
-# Standard deviation of answers: 9168.052875792839. my_var=20
-# Standard deviation of answers: 9473.502080364298. my_var=25
-# Standard deviation of answers: 9775.061070567965. my_var=30
-# Standard deviation of answers: 10233.486219270537. my_var=35
-# Standard deviation of answers: 10595.508966853205. my_var=40
-# Standard deviation of answers: 10858.528092395089. my_var=45
-# Standard deviation of answers: 11158.391520883883. my_var=50
-# Standard deviation of answers: 12210.126376632361. my_var=75
-# Standard deviation of answers: 12646.890194826552. my_var=100
-# Standard deviation of answers: 13517.123014902247. my_var=200
-# Standard deviation of answers: 14004.137443389127. my_var=1000
-
-# for i in range(10):
-#     print(f"Epoch: {i}/10")
-#     MLP.train(data, 0.02)
-# print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
+print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
+for i in range(400):
+    print(f"Epoch: {i}/400")
+    MLP.train(data, 0.05)
+print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
