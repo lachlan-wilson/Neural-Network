@@ -3,7 +3,7 @@
 
 # External libraries
 import matplotlib
-matplotlib.use("TkAgg")   # or "QtAgg"
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -636,11 +636,19 @@ class NewMultilayerPerceptron:
         self.sizes = sizes
 
         # Instance a generator object to create random numbers
-        random_gen = np.random.default_rng()
+        random_gen = np.random.default_rng(42)
         # Create lists of arrays of random numbers
+
         self.activations = [random_gen.random(size, dtype=np.float32) for size in sizes]
         self.biases = [2 * random_gen.random(size, dtype=np.float32) - 1 for size in sizes[1:]]
-        self.weights = [(2 * random_gen.random((sizes[i], sizes[i + 1])) - 1) / np.sqrt(sizes[i]) for i in range(len(sizes) - 1)]
+        self.weights = [2 * random_gen.random((sizes[i], sizes[i + 1])) - 1 for i in range(len(sizes) - 1)]
+
+        # self.activations = [np.zeros(size, dtype=np.float32) for size in sizes]
+        # self.biases = [np.zeros(size, dtype=np.float32) for size in sizes[1:]]
+        # self.weights = [
+        #     (random_gen.standard_normal((sizes[i], sizes[i + 1])).astype(np.float32) * np.sqrt(1.0 / sizes[i]))
+        #     for i in range(len(sizes) - 1)
+        # ]
 
         # Initialises variables to store objects needed for the diagram
         self.__figure = None
@@ -816,17 +824,23 @@ class NewMultilayerPerceptron:
         images = dataset[0]
         labels = dataset[1]
         correct = 0
+        answers = [0 for i in range(10)]
         total = len(images)
 
         # Loop for each image-label pair
         for image, label in zip(images, labels):
             # Update the network with the image
             self.forward_pass(image)
+            # print(self.activations[-1])
 
             # If the highest output from the network is correct
             if label == np.argmax(self.activations[-1]):
                 # Increment correct
                 correct += 1
+
+            answers[np.argmax(self.activations[-1])] += 1
+
+        print(answers)
 
         return correct / total
 
@@ -837,7 +851,7 @@ data = train_mnist.load()
 MLP = NewMultilayerPerceptron([784, 16, 16, 10])
 
 print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
-for i in range(10):
-    print(f"Epoch: {i}/10")
-    MLP.train(data, 0.02)
-print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
+# for i in range(10):
+#     print(f"Epoch: {i}/10")
+#     MLP.train(data, 0.02)
+# print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")

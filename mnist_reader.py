@@ -9,8 +9,8 @@ import numpy as np
 
 class MNIST(object):
 
-    def __init__(self, path='mnist-dataset', name_img='t10k-images.idx3-ubyte',
-                 name_lbl='t10k-labels.idx1-ubyte'):
+    def __init__(self, path='mnist-dataset', name_img='train-images.idx3-ubyte',
+                 name_lbl='train-labels.idx1-ubyte'):
         self.path = path
         self.name_img = name_img
         self.name_lbl = name_lbl
