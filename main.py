@@ -107,7 +107,7 @@ class Diagram(plt.Axes):
 
         Parameters
         ----------
-        mlp: MultilayerPerceptron
+        mlp: NewMultilayerPerceptron
             An instance of the `MultilayerPerceptron` object.
         __figure: Figure
             The `Figure` object the diagram should be contained in.
@@ -122,7 +122,7 @@ class Diagram(plt.Axes):
             list of all possible arguments.
         """
         # Ensure all the parameters are valid
-        assert isinstance(mlp, MultilayerPerceptron), "mlp must be a MultilayerPerceptron."
+        assert isinstance(mlp, NewMultilayerPerceptron), "mlp must be a MultilayerPerceptron."
         assert isinstance(__figure, plt.Figure), "__figure must be a Figure."
 
         super().__init__(__figure, [0.3, 0.1, 0.65, 0.8], **kwargs)
@@ -260,7 +260,7 @@ class Diagram(plt.Axes):
         """
         self.text(x * self.layer_width + self.x_offset,
                   self.max_height + 1.4,
-                  f"{len(self.mlp.activations[x])}",
+                  f"{self.mlp.sizes[x]}",
                   va="center",
                   ha="center"
                   )
@@ -307,23 +307,6 @@ class Diagram(plt.Axes):
                              ))
                         self.paths[(layer, neuron_index, next_neuron_index)] = line
 
-    def _show_cost(self):
-        """
-        Display the cost for that dataset index below the diagram.
-
-        Returns
-        -------
-        cost: `Text`
-            The text containing the cost value.
-        """
-        cost = self.text(len(self.mlp.sizes) * self.layer_width / 2,
-                         -2,
-                         f"Cost: {self.mlp.cost()}",
-                         ha="center",
-                         clip_on=False
-                         )
-        return cost
-
     def show_diagram(self):
         """Display the plot."""
         # Add the background boxes
@@ -363,7 +346,7 @@ class Diagram(plt.Axes):
                   ha="center",
                   clip_on=False
                   )
-        self.cost = self._show_cost()
+        # self.cost = self._show_cost()
         self.axis("off")
         self.grid("off")
         self.set_aspect("equal")
@@ -392,234 +375,234 @@ class Diagram(plt.Axes):
             path.set_linewidth(colour[-1] * 1.5)
             path.stale = True
 
-        self.cost.set_text(f"Cost: {self.mlp.cost()}")
+        # self.cost.set_text(f"Cost: {self.mlp.cost()}")
 
 
-class MultilayerPerceptron:
-    """
-    The class for the multilayer neuron.
-
-    Attributes
-    ----------
-    sizes: list of int
-        A list of the number of perceptrons in each layer.
-    activations: list of ndarray(dtype=np.float32, ndim=1)
-        A list of arrays storing the activation of each neuron.
-        Accessed with activations[layer][index].
-    weighted_inputs: list of ndarray(dtype=np.float32, ndim=1)
-        A list of arrays storing the weighted input to each neuron (activation before sigmoid function).
-        Accessed with activations[layer][index].
-    biases: list of ndarray(dtype=np.float32, ndim=1)
-        A list of arrays storing the bias of each neuron.
-        Accessed with biases[layer][index].
-    weights: list of ndarray(dtype=np.float32, ndim=2)
-        A list of arrays storing the weights of each connection.
-        The length is one less than activations because the input and output layers only have one connection.
-        Accessed with weights[layer of left neuron][index of left neuron][index of right neuron].
-    __figure: None or `Figure` object
-        The `Figure` that will contain the diagram and the image.
-    __diagram: None or `Diagram(Axes)` object
-        The `Diagram` of the mlp.
-    __image_axes: None or `Axes` object
-        The `Axes` that will contain the image
-    __image_object: `Image`
-        The `Image` object that contains the image object for updating
-    image: array-like image
-        The image of the number for a given dataset index
-    label: str
-        The label for the image of the number for a given dataset index
-    costs: None or ndarray(ndim = 1)
-        An array of costs of for each dataset index
-
-    Methods
-    -------
-    display(max_height=None, layer_width=6, output_labels=None)
-        Display a diagram of the multilayer perceptron using a `Diagram` object.
-    update_display(self, dataset, data_index=0)
-        Update the display based on new dataset index and new activations.
-    calculate_activations()
-        Calculate the activations of neurons in layers outside the input layer.
-    use_input(self, dataset, index=0)
-        Update the input layer to use the data.
-    cost()
-        Calculate the cost of this dataset index.
-    average_cost(self, dataset)
-        Calculates the average cost over the full dataset
-    """
-
-    # Initialise the class with activations, biases and weights based on the entered size array
-    def __init__(self, sizes, dataset):
-        """
-        Initialise the `MultilayerPerceptron` object with a given size.
-
-        Parameters
-        ----------
-        sizes: list of integers
-            A list of the number of perceptrons in each layer.
-        dataset: tuple[Any, Union[array, array[Union[int, float, str]]]]
-            The data of the MNIST dataset.
-        """
-        self.sizes = sizes
-        self.dataset = dataset
-        # Instance a generator object to create random numbers
-        random_gen = np.random.default_rng(42)
-        # Create lists of arrays of random numbers
-        self.activations = [random_gen.random(size, dtype=np.float32) for size in sizes]
-        self.weighted_inputs = [random_gen.random(size, dtype=np.float32) for size in sizes[1:]]
-        # self.activations = [np.linspace(0.05, 0.95, size, dtype=np.float32) for size in sizes]
-        self.biases = [10 * random_gen.random(size, dtype=np.float32) - 5 for size in sizes[1:]]
-        self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
-
-        self.__figure = None
-        self.__image_axes = None
-        self.__diagram = None
-        self.__image_object = None
-
-        self.image = None
-        self.label = None
-
-        self.costs = None
-
-    def show_image(self):
-        """Display an MNIST image using matplotlib."""
-        # Create a new image if there isn't one
-        if self.__image_object is None:
-            self.__image_object = self.__image_axes.imshow(self.image, cmap="gray")
-        else:
-            self.__image_object.set_data(self.image)
-
-        self.__image_axes.set_title(f"Label: {self.label}")
-        self.__image_axes.axis("off")
-
-    def display(self, max_height=None, layer_width=6, output_labels=None):
-        """
-        Displays a diagram of the `MultilayerPerceptron` with a given look.
-
-        Parameters
-        ----------
-        max_height: int, default=None
-            The maximum number of perceptrons shown in one layer.
-        layer_width: int, default=6
-            The width of each layer.
-        output_labels: list of str, default=None
-            A list containing the names of the output perceptrons.
-        """
-        # Ensure the parameters are valid
-        assert max_height is None or isinstance(max_height, (
-            int, float)) and max_height > 0, "max_height must be None or a positive, real number."
-        assert isinstance(layer_width, (int, float)) and layer_width > 0, "layer_width must be a positive, real number."
-        assert output_labels is None or (isinstance(output_labels, list) and all(
-            isinstance(label, str) for label in output_labels)), "output_labels must be None or list of strings."
-
-        # If max height wasn't defined set it to the biggest layer size
-        if max_height is None or max_height > max(self.sizes):
-            max_height = max(self.sizes)
-        else:
-            max_height = max_height
-
-        self.use_input()
-
-        # Create a figure for the diagram
-        self.__figure = plt.figure(figsize=(len(self.sizes) * layer_width + 10, max_height + 10))
-        # Create a Diagram object using the parameters and the __figure
-        self.__diagram = Diagram(self, self.__figure, max_height, layer_width, output_labels)
-
-        # Show the diagram
-        self.__diagram.show_diagram()
-
-        self.__image_axes = plt.Axes(self.__figure, [0.05, 0.35, 0.2, 0.3])
-        self.__figure.add_axes(self.__image_axes)
-        self.show_image()
-
-    def update_display(self, dataset=None, data_index=0):
-        """
-        Update the display based on new dataset index and new activations.
-
-        Parameters
-        ----------
-        dataset: None or tuple[Any, Union[array, array[Union[int, float, str]]]], default=None
-            A section of the MNIST dataset
-        data_index: int, default=0
-            The index of the data to be displayed.
-        """
-        if dataset is None:
-            dataset = self.dataset
-        # Update the MLP
-        self.use_input(dataset, data_index)
-
-        # Update the diagram
-        self.__diagram.update_diagram()
-
-        # Update the image
-        self.show_image()
-
-        # Refresh the canvas
-        self.__figure.stale = True
-        self.__figure.canvas.draw()
-        self.__figure.canvas.flush_events()
-        plt.pause(0.001)
-        plt.draw()
-
-    def calculate_activations(self):
-        """Calculate the activations of neurons in layers outside the input layer."""
-        # Loop for each layer
-        for x in range(1, len(self.sizes)):
-            # Calculate the new activations of that layer in parallel
-            self.weighted_inputs[x - 1] = self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1]
-            self.activations[x] = sigmoid(self.weighted_inputs[x - 1])
-
-    def use_input(self, image=None, label=None):
-        """
-        Update the input layer to use the data.
-
-        Parameters
-        ----------
-        image: None or array-like-image:
-            The image of the number to be used.
-        label: None or int
-            The label of the number to be used.
-        """
-        if image is None:
-            image = self.dataset[0][0]
-
-        if label is None:
-            label = self.dataset[1][0]
-
-        self.image = image
-        self.label = label
-        self.activations[0] = 1 - image.flatten().astype(np.float32)
-        self.calculate_activations()
-
-    def cost(self):
-        """
-        Calculate the cost of this dataset index.
-
-        Returns
-        -------
-        cost: int
-            cost of this dataset index.
-        """
-        answer = np.zeros(self.sizes[-1], dtype=np.float32)
-        answer[self.label] = 1
-        return ((self.activations[-1] - answer) ** 2).sum()
-
-    def average_cost(self, batch):
-        self.costs = np.zeros(len(batch[0]))
-
-        for i in range(len(batch[0])):
-            self.use_input(batch, i)
-            self.costs[i] = self.cost()
-        return np.mean(self.costs)
-
-    def run_stochastic_gradient_descent(self):
-        images = np.array_split(self.dataset[0], int(len(self.dataset[0]) / 100))
-        labels = np.array_split(self.dataset[1], int(len(self.dataset[1]) / 100))
-
-        for image_batch, label_batch in zip(images, labels):
-            for image, label in zip(image_batch, label_batch):
-                self.use_input(image, label)
-                self.calculate_activations()
-                cost = self.cost()
+# class MultilayerPerceptron:
+#     """
+#     The class for the multilayer neuron.
+#
+#     Attributes
+#     ----------
+#     sizes: list of int
+#         A list of the number of perceptrons in each layer.
+#     activations: list of ndarray(dtype=np.float32, ndim=1)
+#         A list of arrays storing the activation of each neuron.
+#         Accessed with activations[layer][index].
+#     weighted_inputs: list of ndarray(dtype=np.float32, ndim=1)
+#         A list of arrays storing the weighted input to each neuron (activation before sigmoid function).
+#         Accessed with activations[layer][index].
+#     biases: list of ndarray(dtype=np.float32, ndim=1)
+#         A list of arrays storing the bias of each neuron.
+#         Accessed with biases[layer][index].
+#     weights: list of ndarray(dtype=np.float32, ndim=2)
+#         A list of arrays storing the weights of each connection.
+#         The length is one less than activations because the input and output layers only have one connection.
+#         Accessed with weights[layer of left neuron][index of left neuron][index of right neuron].
+#     __figure: None or `Figure` object
+#         The `Figure` that will contain the diagram and the image.
+#     __diagram: None or `Diagram(Axes)` object
+#         The `Diagram` of the mlp.
+#     __image_axes: None or `Axes` object
+#         The `Axes` that will contain the image
+#     __image_object: `Image`
+#         The `Image` object that contains the image object for updating
+#     image: array-like image
+#         The image of the number for a given dataset index
+#     label: str
+#         The label for the image of the number for a given dataset index
+#     costs: None or ndarray(ndim = 1)
+#         An array of costs of for each dataset index
+#
+#     Methods
+#     -------
+#     display(max_height=None, layer_width=6, output_labels=None)
+#         Display a diagram of the multilayer perceptron using a `Diagram` object.
+#     update_display(self, dataset, data_index=0)
+#         Update the display based on new dataset index and new activations.
+#     calculate_activations()
+#         Calculate the activations of neurons in layers outside the input layer.
+#     use_input(self, dataset, index=0)
+#         Update the input layer to use the data.
+#     cost()
+#         Calculate the cost of this dataset index.
+#     average_cost(self, dataset)
+#         Calculates the average cost over the full dataset
+#     """
+#
+#     # Initialise the class with activations, biases and weights based on the entered size array
+#     def __init__(self, sizes, dataset):
+#         """
+#         Initialise the `MultilayerPerceptron` object with a given size.
+#
+#         Parameters
+#         ----------
+#         sizes: list of integers
+#             A list of the number of perceptrons in each layer.
+#         dataset: tuple[Any, Union[array, array[Union[int, float, str]]]]
+#             The data of the MNIST dataset.
+#         """
+#         self.sizes = sizes
+#         self.dataset = dataset
+#         # Instance a generator object to create random numbers
+#         random_gen = np.random.default_rng(42)
+#         # Create lists of arrays of random numbers
+#         self.activations = [random_gen.random(size, dtype=np.float32) for size in sizes]
+#         self.weighted_inputs = [random_gen.random(size, dtype=np.float32) for size in sizes[1:]]
+#         # self.activations = [np.linspace(0.05, 0.95, size, dtype=np.float32) for size in sizes]
+#         self.biases = [10 * random_gen.random(size, dtype=np.float32) - 5 for size in sizes[1:]]
+#         self.weights = [10 * random_gen.random((sizes[i], sizes[i + 1])) - 5 for i in range(len(sizes) - 1)]
+#
+#         self.__figure = None
+#         self.__image_axes = None
+#         self.__diagram = None
+#         self.__image_object = None
+#
+#         self.image = None
+#         self.label = None
+#
+#         self.costs = None
+#
+#     def show_image(self):
+#         """Display an MNIST image using matplotlib."""
+#         # Create a new image if there isn't one
+#         if self.__image_object is None:
+#             self.__image_object = self.__image_axes.imshow(self.image, cmap="gray")
+#         else:
+#             self.__image_object.set_data(self.image)
+#
+#         self.__image_axes.set_title(f"Label: {self.label}")
+#         self.__image_axes.axis("off")
+#
+#     def display(self, max_height=None, layer_width=6, output_labels=None):
+#         """
+#         Displays a diagram of the `MultilayerPerceptron` with a given look.
+#
+#         Parameters
+#         ----------
+#         max_height: int, default=None
+#             The maximum number of perceptrons shown in one layer.
+#         layer_width: int, default=6
+#             The width of each layer.
+#         output_labels: list of str, default=None
+#             A list containing the names of the output perceptrons.
+#         """
+#         # Ensure the parameters are valid
+#         assert max_height is None or isinstance(max_height, (
+#             int, float)) and max_height > 0, "max_height must be None or a positive, real number."
+#         assert isinstance(layer_width, (int, float)) and layer_width > 0, "layer_width must be a positive, real number."
+#         assert output_labels is None or (isinstance(output_labels, list) and all(
+#             isinstance(label, str) for label in output_labels)), "output_labels must be None or list of strings."
+#
+#         # If max height wasn't defined set it to the biggest layer size
+#         if max_height is None or max_height > max(self.sizes):
+#             max_height = max(self.sizes)
+#         else:
+#             max_height = max_height
+#
+#         self.use_input()
+#
+#         # Create a figure for the diagram
+#         self.__figure = plt.figure(figsize=(len(self.sizes) * layer_width + 10, max_height + 10))
+#         # Create a Diagram object using the parameters and the __figure
+#         self.__diagram = Diagram(self, self.__figure, max_height, layer_width, output_labels)
+#
+#         # Show the diagram
+#         self.__diagram.show_diagram()
+#
+#         self.__image_axes = plt.Axes(self.__figure, [0.05, 0.35, 0.2, 0.3])
+#         self.__figure.add_axes(self.__image_axes)
+#         self.show_image()
+#
+#     def update_display(self, dataset=None, data_index=0):
+#         """
+#         Update the display based on new dataset index and new activations.
+#
+#         Parameters
+#         ----------
+#         dataset: None or tuple[Any, Union[array, array[Union[int, float, str]]]], default=None
+#             A section of the MNIST dataset
+#         data_index: int, default=0
+#             The index of the data to be displayed.
+#         """
+#         if dataset is None:
+#             dataset = self.dataset
+#         # Update the MLP
+#         self.use_input(dataset, data_index)
+#
+#         # Update the diagram
+#         self.__diagram.update_diagram()
+#
+#         # Update the image
+#         self.show_image()
+#
+#         # Refresh the canvas
+#         self.__figure.stale = True
+#         self.__figure.canvas.draw()
+#         self.__figure.canvas.flush_events()
+#         plt.pause(0.001)
+#         plt.draw()
+#
+#     def calculate_activations(self):
+#         """Calculate the activations of neurons in layers outside the input layer."""
+#         # Loop for each layer
+#         for x in range(1, len(self.sizes)):
+#             # Calculate the new activations of that layer in parallel
+#             self.weighted_inputs[x - 1] = self.activations[x - 1] @ self.weights[x - 1] + self.biases[x - 1]
+#             self.activations[x] = sigmoid(self.weighted_inputs[x - 1])
+#
+#     def use_input(self, image=None, label=None):
+#         """
+#         Update the input layer to use the data.
+#
+#         Parameters
+#         ----------
+#         image: None or array-like-image:
+#             The image of the number to be used.
+#         label: None or int
+#             The label of the number to be used.
+#         """
+#         if image is None:
+#             image = self.dataset[0][0]
+#
+#         if label is None:
+#             label = self.dataset[1][0]
+#
+#         self.image = image
+#         self.label = label
+#         self.activations[0] = 1 - image.flatten().astype(np.float32)
+#         self.calculate_activations()
+#
+#     def cost(self):
+#         """
+#         Calculate the cost of this dataset index.
+#
+#         Returns
+#         -------
+#         cost: int
+#             cost of this dataset index.
+#         """
+#         answer = np.zeros(self.sizes[-1], dtype=np.float32)
+#         answer[self.label] = 1
+#         return ((self.activations[-1] - answer) ** 2).sum()
+#
+#     def average_cost(self, batch):
+#         self.costs = np.zeros(len(batch[0]))
+#
+#         for i in range(len(batch[0])):
+#             self.use_input(batch, i)
+#             self.costs[i] = self.cost()
+#         return np.mean(self.costs)
+#
+#     def run_stochastic_gradient_descent(self):
+#         images = np.array_split(self.dataset[0], int(len(self.dataset[0]) / 100))
+#         labels = np.array_split(self.dataset[1], int(len(self.dataset[1]) / 100))
+#
+#         for image_batch, label_batch in zip(images, labels):
+#             for image, label in zip(image_batch, label_batch):
+#                 self.use_input(image, label)
+#                 self.calculate_activations()
+#                 cost = self.cost()
 
 
 class NewMultilayerPerceptron:
@@ -648,7 +631,7 @@ class NewMultilayerPerceptron:
         self.__diagram = None
         self.__image_object = None
 
-    def forward_pass(self, image):
+    def _forward_pass(self, image):
         """
         Calculate the activations of each neuron based on the input neurons from the image.
 
@@ -776,7 +759,7 @@ class NewMultilayerPerceptron:
             # For each image and label in the batch
             for image, label in zip(image_batch, label_batch):
                 # Update the activations for that image
-                weighted_inputs = self.forward_pass(image)
+                weighted_inputs = self._forward_pass(image)
                 # Calculate the vectors for the changes in weights and biases
                 weight_gradients, bias_gradients = backpropagation(weighted_inputs, label)
 
@@ -792,7 +775,7 @@ class NewMultilayerPerceptron:
 
         total_cost = 0
         for image, label in zip(images, labels):
-            _ = self.forward_pass(image)
+            _ = self._forward_pass(image)
             answer = np.zeros(self.sizes[-1], dtype=np.float32)
             answer[label] = 1
             total_cost += ((self.activations[-1] - answer) ** 2).sum()
@@ -822,7 +805,7 @@ class NewMultilayerPerceptron:
         # Loop for each image-label pair
         for image, label in zip(images, labels):
             # Update the network with the image
-            self.forward_pass(image)
+            self._forward_pass(image)
             # print(self.activations[-1])
 
             # If the highest output from the network is correct
@@ -834,14 +817,79 @@ class NewMultilayerPerceptron:
 
         return correct / total
 
+    def create_display(self, max_height=None, layer_width=6, output_labels=None):
+        """
+        Displays a diagram of the `MultilayerPerceptron` with a given look.
+
+        Parameters
+        ----------
+        max_height: int, default=None
+            The maximum number of perceptrons shown in one layer.
+        layer_width: int, default=6
+            The width of each layer.
+        output_labels: list of str, default=None
+            A list containing the names of the output perceptrons.
+        """
+        # Ensure the parameters are valid
+        assert max_height is None or isinstance(max_height, (
+            int, float)) and max_height > 0, "max_height must be None or a positive, real number."
+        assert isinstance(layer_width, (int, float)) and layer_width > 0, "layer_width must be a positive, real number."
+        assert output_labels is None or (isinstance(output_labels, list) and all(
+            isinstance(label, str) for label in output_labels)), "output_labels must be None or list of strings."
+
+        # If max height wasn't defined set it to the biggest layer size
+        if max_height is None or max_height > max(self.sizes):
+            max_height = max(self.sizes)
+        else:
+            max_height = max_height
+
+        # Create a figure for the diagram
+        self.__figure = plt.figure(figsize=(len(self.sizes) * layer_width + 10, max_height + 10))
+        # Create a Diagram object using the parameters and the __figure
+        self.__diagram = Diagram(self, self.__figure, max_height, layer_width, output_labels)
+
+        self.__image_axes = plt.Axes(self.__figure, [0.05, 0.35, 0.2, 0.3])
+        self.__figure.add_axes(self.__image_axes)
+
+        plt.show()
+
+    def display(self, dataset, index=0):
+        _ = self._forward_pass(dataset[0][index])
+
+        self.__diagram.update_diagram()
+
+        self._show_image(dataset[0][index], dataset[1][index])
+        self.__diagram.show_diagram()
+
+        self.__figure.stale = True
+        self.__figure.canvas.draw()
+        self.__figure.canvas.flush_events()
+        plt.pause(0.001)
+        plt.draw()
+
+    def _show_image(self, image, label):
+        if self.__image_object is None:
+            self.__image_object = self.__image_axes.imshow(image, cmap="gray")
+        else:
+            self.__image_object.set_data(image)
+        self.__image_axes.set_title(f"Label: {label}")
+        self.__image_axes.axis("off")
+
 
 train_mnist = mnist_reader.MNIST()
 data = train_mnist.load()
 
+test_mnist = mnist_reader.MNIST(name_img="t10k-images.idx3-ubyte", name_lbl="t10k-labels.idx1-ubyte")
+test_data = test_mnist.load()
+
 MLP = NewMultilayerPerceptron([784, 16, 16, 10])
 
-print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
-for i in range(400):
-    print(f"Epoch: {i}/400")
-    MLP.train(data, 0.05)
-print(f"Accuracy: {round(MLP.test(data), 4) * 100}%")
+MLP.create_display(16, 6, [str(i) for i in range(10)])
+
+MLP.display(data)
+
+# print(f"Accuracy: {round(MLP.test(test_data), 4) * 100}%")
+# for i in range(400):
+#     print(f"Epoch: {i}/400")
+#     MLP.train(data, 0.05)
+# print(f"Accuracy: {round(MLP.test(test_data), 4) * 100}%")
