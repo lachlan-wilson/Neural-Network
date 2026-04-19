@@ -1,6 +1,5 @@
 # ----- Multilayer Perceptron -----
 #       ----- 31/03/2026 -----
-import time
 
 # External libraries
 import matplotlib
@@ -92,7 +91,7 @@ class Diagram(plt.Axes):
         A dictionary containing data about neurons so that they can be updated.
     paths: dict
         A dictionary containing data about paths so that they can be updated.
-    cost: `Text` object
+    cost_object: `Text` object or None
         An object for the cost of an epoch.
 
     Methods
@@ -477,10 +476,13 @@ class MultilayerPerceptron:
 
         # Initialise variables to store objects needed for the diagram
         self.__figure = None
-        self.__image_axes = None
         self.__diagram = None
+
+        self.__image_axes = None
         self.__image_object = None
+
         self.__accuracy_axes = None
+        self.__accuracy_plot = None
 
     def _forward_pass(self, image):
         """
@@ -535,33 +537,33 @@ class MultilayerPerceptron:
             The size of a mini-batch
         """
 
-        def backpropagation(weighted_inputs, label):
+        def backpropagation(wi, y):
             """
             Runs the backpropogation algorithm on the current networks activations and the desired output.
 
             Parameters
             ----------
-            weighted_inputs: list of ndarray(dtype=np.float32, ndim=1)
+            wi: list of ndarray(dtype=np.float32, ndim=1)
                 The inputs each neuron before they're based through the sigmoid function.
                 Uses when training the model, often called `z`.
-            label: int
+            y: int
                 The desired "guess" of the network.
 
             Returns
             -------
-            weight_gradients: list of ndarray(dtype=np.float32, ndim=1)
+            weight_gs: list of ndarray(dtype=np.float32, ndim=1)
                 A vector of the changes that should be made to weights for this pass.
-            bias_gradients: list of ndarray(dtype=np.float32, ndim=2)
+            bias_gs: list of ndarray(dtype=np.float32, ndim=2)
                 A vector of the changes that should be made to biases for this pass.
             """
 
             # Vector of the desired output (y)
             desired_output = np.zeros(self.sizes[-1], dtype=np.float32)
-            desired_output[label] = 1.0
+            desired_output[y] = 1.0
 
             # Initialise vectors to store the changes in weights and biases
-            weight_gradients = [np.zeros_like(w) for w in self.weights]
-            bias_gradients = [np.zeros_like(b) for b in self.biases]
+            weight_gs = [np.zeros_like(w) for w in self.weights]
+            bias_gs = [np.zeros_like(b) for b in self.biases]
 
             # # Cost: C = sum((a-y)^2
             # # Partial derivative dC/da: 2(a-y)
@@ -570,7 +572,7 @@ class MultilayerPerceptron:
             # dC_da_output = 2 * (self.activations[-1] - desired_output)
             #
             # # Partial derivative da/dz: σ'(z)
-            # da_dz_output = sigmoid_derivative(weighted_inputs[-1])
+            # da_dz_output = sigmoid_derivative(wi[-1])
             #
             # # Intermediate step to getting the changes for bias and weights
             # layer_delta = dC_da_output * da_dz_output
@@ -578,20 +580,20 @@ class MultilayerPerceptron:
             layer_delta = self.activations[-1] - desired_output
 
             # Storing the wanted changes in biases and weights
-            bias_gradients[-1] = layer_delta
-            weight_gradients[-1] = np.outer(self.activations[-2], layer_delta)
+            bias_gs[-1] = layer_delta
+            weight_gs[-1] = np.outer(self.activations[-2], layer_delta)
 
             # Looping backwards through the layers
             for layer_offset in range(2, len(self.sizes)):
                 # Similar to above but for the previous layers
-                da_dz = sigmoid_derivative(weighted_inputs[-layer_offset])
+                da_dz = sigmoid_derivative(wi[-layer_offset])
 
                 layer_delta = (self.weights[-layer_offset + 1] @ layer_delta) * da_dz
 
-                bias_gradients[-layer_offset] = layer_delta
-                weight_gradients[-layer_offset] = np.outer(self.activations[-layer_offset - 1], layer_delta)
+                bias_gs[-layer_offset] = layer_delta
+                weight_gs[-layer_offset] = np.outer(self.activations[-layer_offset - 1], layer_delta)
 
-            return weight_gradients, bias_gradients
+            return weight_gs, bias_gs
 
         images = dataset[0]
         labels = dataset[1]
@@ -606,13 +608,13 @@ class MultilayerPerceptron:
         image_batches = np.array_split(shuffled_images, num_samples / batch_size)
         label_batches = np.array_split(shuffled_labels, num_samples / batch_size)
 
-        # Loop for each image-label pair
+        # Loop for each image-y pair
         for image_batch, label_batch in zip(image_batches, label_batches):
             # Initialise vectors for the total changes and weights for this batch
             summed_weight_gradients = [np.zeros_like(w, dtype=np.float32) for w in self.weights]
             summed_bias_gradients = [np.zeros_like(b, dtype=np.float32) for b in self.biases]
 
-            # For each image and label in the batch
+            # For each image and y in the batch
             for image, label in zip(image_batch, label_batch):
                 # Update the activations for that image
                 weighted_inputs = self._forward_pass(image)
@@ -693,7 +695,7 @@ class MultilayerPerceptron:
         # Create a Diagram object using the parameters and the __figure
         self.__diagram = Diagram(self, self.__figure, max_height, layer_width, output_labels)
 
-        self.__image_axes = plt.Axes(self.__figure, [0.05, 0.5, 0.3, 0.4]) #[0.3, 0.1, 0.65, 0.8]
+        self.__image_axes = plt.Axes(self.__figure, [0.05, 0.5, 0.3, 0.4])
         self.__figure.add_axes(self.__image_axes)
 
         self.__accuracy_axes = plt.Axes(self.__figure, [0.05, 0.1, 0.3, 0.4])
@@ -750,7 +752,16 @@ class MultilayerPerceptron:
         self.__image_axes.axis("off")
 
     def _show_accuracy(self):
-        self.__accuracy_axes.plot(self.accuracies)
+        if self.__accuracy_plot is None:
+            (self.__accuracy_plot,) = self.__accuracy_axes.plot([0, 1], [0, 1])
+            self.__accuracy_axes.set_title("Accuracies")
+            self.__accuracy_axes.set_xlabel("Epoch * Learning Rate")
+            self.__accuracy_axes.set_ylabel("Accuracy")
+            self.__accuracy_axes.set_ylim(0, 1)
+        else:
+            self.__accuracy_plot.set_data(self.accuracies)
+
+            self.__accuracy_axes.set_xlim(0, max(self.accuracies[0]))
 
 
 train_mnist = mnist_reader.MNIST()
@@ -761,25 +772,36 @@ test_data = test_mnist.load()
 
 MLP = MultilayerPerceptron([784, 16, 16, 10])
 
+plt.ion()
 MLP.create_display(16, 6, [str(i) for i in range(10)])
 
-MLP.display(data, 5)
+MLP.display(data, 2)
+plt.show(block=False)
+plt.pause(2)
 
+learning_rate = 1
+for i in range(500):
+    MLP.train(data, learning_rate)
+    accuracy = MLP.test(test_data)
+    print(f"Epoch {i}: {round(accuracy, 5)}%")
+    MLP.accuracies[1].append(accuracy)
+    try:
+        MLP.accuracies[0].append(MLP.accuracies[0][-1] + learning_rate)
+    except IndexError:
+        MLP.accuracies[0].append(0)
 
-def run(epochs, learning_rate):
-    for i in range(epochs):
-        MLP.train(data, learning_rate)
-        accuracy = MLP.test(test_data)
-        MLP.accuracies[0].append(accuracy)
-        MLP.accuracies[1].append(learning_rate * i)
+    MLP.display(data, 2)
+    plt.pause(0.1)
 
+    if accuracy > 0.97:
+        break
+    elif accuracy > 0.95:
+        learning_rate = 0.05
+    elif accuracy > 0.9:
+        learning_rate = 0.2
+    elif accuracy > 0.8:
+        learning_rate = 0.5
 
-run(10, 0.5)
-MLP.display(data, 5)
-
-run(20, 0.2)
-MLP.display(data, 5)
-
-
-
-
+MLP.display(data, 2)
+plt.ioff()
+plt.show()
