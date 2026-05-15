@@ -775,8 +775,8 @@ class MultilayerPerceptron:
 
     def read_weights_and_biases(self, filename="weights_and_biases.npz"):
         file = np.load(filename)
-        weights = [file[f"w{i}"] for i in range(len(self.sizes))]
-        biases = [file[f"w{i}"] for i in range(len(self.sizes))]
+        self.weights = [file[f"w{i}"] for i in range(len(self.sizes))]
+        self.biases = [file[f"b{i}"] for i in range(len(self.sizes))]
 
 
 train_mnist = mnist_reader.MNIST()
@@ -794,6 +794,8 @@ MLP.display(data, 2)
 plt.show(block=False)
 plt.pause(2)
 
+MLP.read_weights_and_biases()
+
 learning_rate = 1
 for i in range(500):
     MLP.train(data, learning_rate)
@@ -808,8 +810,8 @@ for i in range(500):
     MLP.display(data, 0)
     plt.pause(0.1)
 
-    if accuracy > 0.8:
-        MLP.save_weights_and_biases()
+    if accuracy > 0.7:
+        # MLP.save_weights_and_biases()
         break
 
 MLP.display(data, 2)
