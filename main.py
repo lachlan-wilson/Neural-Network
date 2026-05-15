@@ -752,6 +752,7 @@ class MultilayerPerceptron:
         self.__image_axes.axis("off")
 
     def _show_accuracy(self):
+        """Show a graph of accuracies underneath the image."""
         if self.__accuracy_plot is None:
             (self.__accuracy_plot,) = self.__accuracy_axes.plot([0, 1], [0, 1])
             self.__accuracy_axes.set_title("Accuracies")
@@ -762,6 +763,20 @@ class MultilayerPerceptron:
             self.__accuracy_plot.set_data(self.accuracies)
 
             self.__accuracy_axes.set_xlim(0, max(self.accuracies[0]))
+
+    def save_weights_and_biases(self, filename="weights_and_biases.npz"):
+        # Create a dictionary where each layer is keyed: w0, w1...
+        weights_and_biases = {f"w{i}": layer for i, layer in enumerate(self.weights)}
+        # Add to the dictionary where each layer is keyed: b0, b1...
+        weights_and_biases.update({f"b{i}": layer for i, layer in enumerate(self.biases)})
+
+        # Write the keyed arrays to a file
+        np.savez(filename, **weights_and_biases)
+
+    def read_weights_and_biases(self, filename="weights_and_biases.npz"):
+        file = np.load(filename)
+        weights = [file[f"w{i}"] for i in range(len(self.sizes))]
+        biases = [file[f"w{i}"] for i in range(len(self.sizes))]
 
 
 train_mnist = mnist_reader.MNIST()
@@ -790,17 +805,12 @@ for i in range(500):
     except IndexError:
         MLP.accuracies[0].append(0)
 
-    MLP.display(data, 2)
+    MLP.display(data, 0)
     plt.pause(0.1)
 
-    if accuracy > 0.97:
+    if accuracy > 0.8:
+        MLP.save_weights_and_biases()
         break
-    elif accuracy > 0.95:
-        learning_rate = 0.05
-    elif accuracy > 0.9:
-        learning_rate = 0.2
-    elif accuracy > 0.8:
-        learning_rate = 0.5
 
 MLP.display(data, 2)
 plt.ioff()
