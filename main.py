@@ -813,13 +813,11 @@ MLP.display(data, 2)
 plt.show(block=False)
 plt.pause(2)
 
-MLP.read_weights_and_biases()
-
-learning_rate = 1
-for i in range(500):
+learning_rate = 0.1
+for i in range(10000):
     MLP.train(data, learning_rate)
     accuracy = MLP.test(test_data)
-    print(f"Epoch {i}: {round(accuracy, 5) * 100}%")
+    print(f"Epoch {i}: {round(accuracy * 100, 3)}%")
     MLP.accuracies[1].append(accuracy)
     try:
         MLP.accuracies[0].append(MLP.accuracies[0][-1] + learning_rate)
