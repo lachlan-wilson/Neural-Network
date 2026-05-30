@@ -793,7 +793,7 @@ class MultilayerPerceptron:
         # Load the file
         file = np.load(filename)
 
-        # Store the weights and biases from the file.
+        # Store the weights and biases from the file. Note that the size must be the same for both the current MLP and saved weights and biases.
         self.weights = [file[f"w{i}"] for i in range(len(file.files)) if f"w{i}" in file]
         self.biases = [file[f"b{i}"] for i in range(len(file.files)) if f"b{i}" in file]
 
@@ -829,8 +829,8 @@ for i in range(500):
     MLP.display(data, 0)
     plt.pause(0.1)
 
-    if accuracy > 0.7:
-        # MLP.save_weights_and_biases()
+    if accuracy > 0.9:
+        MLP.save_weights_and_biases()
         break
 
 MLP.display(data, 2)
