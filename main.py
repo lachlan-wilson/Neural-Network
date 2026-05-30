@@ -46,7 +46,7 @@ def sigmoid(x):
     ndarray(dtype=float, ndim=1) or float
         The output(s) of the function
     """
-    x = np.clip(x, -500, 500)
+    x = np.clip(x, -50, 50)
     return 1 / (1 + np.exp(-x))
 
 
@@ -762,7 +762,7 @@ class MultilayerPerceptron:
         else:
             self.__accuracy_plot.set_data(self.accuracies)
 
-            self.__accuracy_axes.set_xlim(0, max(self.accuracies[0]))
+            self.__accuracy_axes.set_xlim(0, max(self.accuracies[0]) if max(self.accuracies[0]) > 0 else 1)
 
     def save_weights_and_biases(self, filename="weights_and_biases.npz"):
         """
@@ -813,13 +813,13 @@ MLP.display(data, 2)
 plt.show(block=False)
 plt.pause(2)
 
-# MLP.read_weights_and_biases()
+MLP.read_weights_and_biases()
 
 learning_rate = 1
 for i in range(500):
     MLP.train(data, learning_rate)
     accuracy = MLP.test(test_data)
-    print(f"Epoch {i}: {round(accuracy, 5)}%")
+    print(f"Epoch {i}: {round(accuracy, 5) * 100}%")
     MLP.accuracies[1].append(accuracy)
     try:
         MLP.accuracies[0].append(MLP.accuracies[0][-1] + learning_rate)
