@@ -765,6 +765,14 @@ class MultilayerPerceptron:
             self.__accuracy_axes.set_xlim(0, max(self.accuracies[0]))
 
     def save_weights_and_biases(self, filename="weights_and_biases.npz"):
+        """
+        Save the current weights and biases arrays to a file.
+
+        Parameters
+        ----------
+        filename: str, default="weights_and_biases.npz"
+            The name of the file that will be saved.
+        """
         # Create a dictionary where each layer is keyed: w0, w1...
         weights_and_biases = {f"w{i}": layer for i, layer in enumerate(self.weights)}
         # Add to the dictionary where each layer is keyed: b0, b1...
@@ -774,11 +782,22 @@ class MultilayerPerceptron:
         np.savez(filename, **weights_and_biases)
 
     def read_weights_and_biases(self, filename="weights_and_biases.npz"):
+        """
+        Read weights and biases arrays from file to the `weights` and `biases` arrays.
+
+        Parameters
+        ----------
+        filename: str, default="weights_and_biases.npz"
+            The name of the file that will be read.
+        """
+        # Load the file
         file = np.load(filename)
-        self.weights = [file[f"w{i}"] for i in range(len(self.sizes))]
-        self.biases = [file[f"b{i}"] for i in range(len(self.sizes))]
 
+        # Store the weights and biases from the file.
+        self.weights = [file[f"w{i}"] for i in range(len(file.files)) if f"w{i}" in file]
+        self.biases = [file[f"b{i}"] for i in range(len(file.files)) if f"b{i}" in file]
 
+ 
 train_mnist = mnist_reader.MNIST()
 data = train_mnist.load()
 
@@ -794,7 +813,7 @@ MLP.display(data, 2)
 plt.show(block=False)
 plt.pause(2)
 
-MLP.read_weights_and_biases()
+# MLP.read_weights_and_biases()
 
 learning_rate = 1
 for i in range(500):
