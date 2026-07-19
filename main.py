@@ -468,7 +468,7 @@ class MultilayerPerceptron:
         # Create lists of arrays of random numbers
         self.activations = [np.zeros(size, dtype=np.float32) for size in sizes]
         self.biases = [np.zeros(size, dtype=np.float32) for size in sizes[1:]]
-        self.weights = [(random_gen.random((sizes[i], sizes[i + 1]), dtype=np.float32) - 0.5) * 20 for i in
+        self.weights = [(random_gen.random((sizes[i], sizes[i + 1]), dtype=np.float32) - 0.5) for i in
                         range(len(sizes) - 1)]
 
         # Initialise a list to store accuracies of epochs
@@ -797,40 +797,208 @@ class MultilayerPerceptron:
         self.weights = [file[f"w{i}"] for i in range(len(file.files)) if f"w{i}" in file]
         self.biases = [file[f"b{i}"] for i in range(len(file.files)) if f"b{i}" in file]
 
- 
-train_mnist = mnist_reader.MNIST()
-data = train_mnist.load()
 
-test_mnist = mnist_reader.MNIST(name_img="t10k-images.idx3-ubyte", name_lbl="t10k-labels.idx1-ubyte")
-test_data = test_mnist.load()
+def main():
+    """
+    The main code that uses all other parts.
 
-MLP = MultilayerPerceptron([784, 16, 16, 10])
+    """
+    def positive_value_input(text, default, data_type=int):
+        """
+        Get an input of a value and ensure it is greater than 0.
 
-plt.ion()
-MLP.create_display(16, 6, [str(i) for i in range(10)])
+        Parameters
+        ----------
+        text: str
+            The message to be displayed to the user including a colon and space ': '.
+        default: int or float
+            The default value that will be returned if no answer is entered.
+        data_type: int or float, default = int
 
-MLP.display(data, 2)
-plt.show(block=False)
-plt.pause(2)
+        Returns
+        -------
+        int or float
+            The answer, always greater than 0.
+        """
+        while True:
+            try:
+                value = data_type(input(text) or default)
+                assert value > 0
+                break
+            except AssertionError:
+                print("\033[91mError. Must be greater than 0.\033[0m")
+            except ValueError:
+                print(f"\033[91mError. Must be type {data_type}.\033[0m")
 
-learning_rate = 0.1
-for i in range(10000):
-    MLP.train(data, learning_rate)
-    accuracy = MLP.test(test_data)
-    print(f"Epoch {i}: {round(accuracy * 100, 3)}%")
-    MLP.accuracies[1].append(accuracy)
-    try:
-        MLP.accuracies[0].append(MLP.accuracies[0][-1] + learning_rate)
-    except IndexError:
-        MLP.accuracies[0].append(0)
+        return value
 
-    MLP.display(data, 0)
-    plt.pause(0.1)
+    def yes_or_no(text):
+        """
+        Ask a yes or no question and get a response.
 
-    if accuracy > 0.9:
-        MLP.save_weights_and_biases()
-        break
+        Parameters
+        ----------
+        text: str
+            The question to be asked, not including '[Y/N]: '.
 
-MLP.display(data, 2)
-plt.ioff()
-plt.show()
+        Returns
+        -------
+        bool
+            `True` for yes, `False` for no.
+        """
+        while True:
+            try:
+                answer = input(f"{text} [Y/N]: ")
+                assert answer in ("Y", "N")
+                break
+            except AssertionError:
+                print(f"\033[91mError. Must be 'Y' or 'N'.\033[0m")
+        return answer == "Y"
+
+    def valid_npz_filename():
+        """
+        Ask the user for a filename and validates it ensuring it is not blank, has no spaces and ends in '.npz'.
+        Returns
+        -------
+        str
+            The validated filename.
+        """
+        while True:
+            try:
+                name = input("Filename: ")
+                assert len(name) > 0 and " " not in name and name.endswith(".npz")
+
+                break
+            except AssertionError:
+                print("\033[91mError. Cannot be blank, cannot contain spaces and must end in '.npz'.\033[0m")
+            except FileNotFoundError:
+                print("\033[91mError. This file does not exist.\033[0m")
+
+        return name
+
+    print("\033[94m<" + "-" * 5 + " OCR of MNIST Dataset Using Multilayer Perceptron " + "-" * 5 + ">\033[0m")
+
+    print("Loading data...", end="")
+    train_mnist = mnist_reader.MNIST()
+    train_data = train_mnist.load()
+    test_mnist = mnist_reader.MNIST(name_img="t10k-images.idx3-ubyte", name_lbl="t10k-labels.idx1-ubyte")
+    test_data = test_mnist.load()
+    print("\rLoaded data")
+
+    num_layers = positive_value_input("Number of MLP layers: ", 1, int)
+    layers = []
+    for i in range(num_layers):
+        layers.append(int(input(f"Number of neurons in layer {i+1}: ")))
+
+    print("Initialising MLP...", end="")
+    MLP = MultilayerPerceptron(layers)
+    print("\rInitialised MLP")
+
+    load = yes_or_no("Load a previous MLP of the same shape?")
+    if load:
+        while True:
+            try:
+                filename = valid_npz_filename()
+                MLP.read_weights_and_biases(filename)
+                break
+            except FileNotFoundError:
+                print("\033[91mError. This file does not exist.\033[0m")
+
+    print("Initialising diagram...", end="")
+    plt.ion()
+    MLP.create_display(16, 6, [str(i) for i in range(10)])
+    print("\rInitialised diagram")
+
+    train = yes_or_no("Train the MLP?")
+    if train:
+        rate = positive_value_input("Learning rate: ", 0.1, float)
+        num_epochs = positive_value_input("Number of epochs: ", 100, int)
+        digit_index = positive_value_input("Index of shown digit in test data: ", 0, int)
+
+        MLP.display(test_data, digit_index)
+        plt.show(block=False)
+        plt.pause(2)
+
+        try:
+            print("\n\033[94m<" + "-" * 5 + " Training Model " + "-" * 5 + ">\033[0m")
+            for i in range(num_epochs):
+                MLP.train(train_data, rate)
+                accuracy = MLP.test(test_data)
+
+                print(f"Epoch {i}: {round(accuracy * 100, 3)}%")
+                MLP.accuracies[1].append(accuracy)
+                try:
+                    MLP.accuracies[0].append(MLP.accuracies[0][-1] + rate)
+                except IndexError:
+                    MLP.accuracies[0].append(0)
+
+                MLP.display(test_data, digit_index)
+                plt.pause(0.1)
+
+        except KeyboardInterrupt:
+
+            save = yes_or_no("Save the MLP?")
+            if save:
+                filename = valid_npz_filename()
+                MLP.save_weights_and_biases(filename)
+
+            raise KeyboardInterrupt
+
+    while True:
+        test = yes_or_no("Test the model against other digits?")
+        if test:
+            digit_index = positive_value_input("Index of shown digit in test data: ", 0, int)
+            MLP.accuracies = ([0], [0])
+            MLP.display(test_data, digit_index)
+            plt.show(block=False)
+            plt.pause(2)
+        else:
+            break
+
+    save = yes_or_no("Save the MLP?")
+    if save:
+        filename = valid_npz_filename()
+        MLP.save_weights_and_biases(filename)
+
+
+# # Operational Code
+# train_mnist = mnist_reader.MNIST()
+# data = train_mnist.load()
+#
+# test_mnist = mnist_reader.MNIST(name_img="t10k-images.idx3-ubyte", name_lbl="t10k-labels.idx1-ubyte")
+# test_data = test_mnist.load()
+#
+# MLP = MultilayerPerceptron([784, 16, 16, 10])
+#
+# plt.ion()
+# MLP.create_display(16, 6, [str(i) for i in range(10)])
+#
+# MLP.display(data, 2)
+# plt.show(block=False)
+# plt.pause(2)
+#
+# MLP.read_weights_and_biases("base85_05_07_26.npz")
+#
+# rate = 0.1
+# for i in range(10000):
+#     MLP.train(data, rate)
+#     accuracy = MLP.test(test_data)
+#     print(f"Epoch {i}: {round(accuracy * 100, 3)}%")
+#     MLP.accuracies[1].append(accuracy)
+#     try:
+#         MLP.accuracies[0].append(MLP.accuracies[0][-1] + rate)
+#     except IndexError:
+#         MLP.accuracies[0].append(0)
+#
+#     MLP.display(data, 0)
+#     plt.pause(0.1)
+#
+#     if accuracy > 0.95:
+#         MLP.save_weights_and_biases(filename="base95_05_07_26.npz")
+#         break
+#
+# MLP.display(data, 2)
+# plt.ioff()
+# plt.show()
+if __name__ == "__main__":
+    main()
