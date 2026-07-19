@@ -961,44 +961,5 @@ def main():
         MLP.save_weights_and_biases(filename)
 
 
-# # Operational Code
-# train_mnist = mnist_reader.MNIST()
-# data = train_mnist.load()
-#
-# test_mnist = mnist_reader.MNIST(name_img="t10k-images.idx3-ubyte", name_lbl="t10k-labels.idx1-ubyte")
-# test_data = test_mnist.load()
-#
-# MLP = MultilayerPerceptron([784, 16, 16, 10])
-#
-# plt.ion()
-# MLP.create_display(16, 6, [str(i) for i in range(10)])
-#
-# MLP.display(data, 2)
-# plt.show(block=False)
-# plt.pause(2)
-#
-# MLP.read_weights_and_biases("base85_05_07_26.npz")
-#
-# rate = 0.1
-# for i in range(10000):
-#     MLP.train(data, rate)
-#     accuracy = MLP.test(test_data)
-#     print(f"Epoch {i}: {round(accuracy * 100, 3)}%")
-#     MLP.accuracies[1].append(accuracy)
-#     try:
-#         MLP.accuracies[0].append(MLP.accuracies[0][-1] + rate)
-#     except IndexError:
-#         MLP.accuracies[0].append(0)
-#
-#     MLP.display(data, 0)
-#     plt.pause(0.1)
-#
-#     if accuracy > 0.95:
-#         MLP.save_weights_and_biases(filename="base95_05_07_26.npz")
-#         break
-#
-# MLP.display(data, 2)
-# plt.ioff()
-# plt.show()
 if __name__ == "__main__":
     main()
