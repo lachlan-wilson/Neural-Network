@@ -909,51 +909,55 @@ def main():
     MLP.create_display(16, 6, [str(i) for i in range(10)])
     print("\rInitialised diagram")
 
-    train = yes_or_no("Train the MLP?")
-    if train:
-        rate = positive_value_input("Learning rate: ", 0.1, float)
-        num_epochs = positive_value_input("Number of epochs: ", 100, int)
-        digit_index = positive_value_input("Index of shown digit in test data: ", 0, int)
-
-        MLP.display(test_data, digit_index)
-        plt.show(block=False)
-        plt.pause(2)
-
-        try:
-            print("\n\033[94m<" + "-" * 5 + " Training Model " + "-" * 5 + ">\033[0m")
-            for i in range(num_epochs):
-                MLP.train(train_data, rate)
-                accuracy = MLP.test(test_data)
-
-                print(f"Epoch {i}: {round(accuracy * 100, 3)}%")
-                MLP.accuracies[1].append(accuracy)
-                try:
-                    MLP.accuracies[0].append(MLP.accuracies[0][-1] + rate)
-                except IndexError:
-                    MLP.accuracies[0].append(0)
-
+    try:
+        while True:
+            test = yes_or_no("Test the model against other digits?")
+            if test:
+                digit_index = positive_value_input("Index of shown digit in test data: ", 0, int)
+                MLP.accuracies = ([0.0], [0.0])
                 MLP.display(test_data, digit_index)
-                plt.pause(0.1)
+                plt.show(block=False)
+                plt.pause(2)
 
-        except KeyboardInterrupt:
+            else:
+                train = yes_or_no("Train the MLP?")
+                if train:
+                    rate = positive_value_input("Learning rate: ", 0.1, float)
+                    num_epochs = positive_value_input("Number of epochs: ", 100, int)
+                    digit_index = positive_value_input("Index of shown digit in test data: ", 0, int)
 
-            save = yes_or_no("Save the MLP?")
-            if save:
-                filename = valid_npz_filename()
-                MLP.save_weights_and_biases(filename)
+                    MLP.display(test_data, digit_index)
+                    plt.show(block=False)
+                    plt.pause(2)
 
-            raise KeyboardInterrupt
+                    print("\n\033[94m<" + "-" * 5 + " Training Model " + "-" * 5 + ">\033[0m")
+                    try:
+                        for i in range(num_epochs):
+                            MLP.train(train_data, rate)
+                            accuracy = MLP.test(test_data)
 
-    while True:
-        test = yes_or_no("Test the model against other digits?")
-        if test:
-            digit_index = positive_value_input("Index of shown digit in test data: ", 0, int)
-            MLP.accuracies = ([0], [0])
-            MLP.display(test_data, digit_index)
-            plt.show(block=False)
-            plt.pause(2)
-        else:
-            break
+                            print(f"Epoch {i}: {round(accuracy * 100, 3)}%")
+                            MLP.accuracies[1].append(accuracy)
+                            try:
+                                MLP.accuracies[0].append(MLP.accuracies[0][-1] + rate)
+                            except IndexError:
+                                MLP.accuracies[0].append(0)
+
+                            MLP.display(test_data, digit_index)
+                            plt.pause(0.1)
+                    except KeyboardInterrupt:
+                        print(f"Training Aborted on epoch {i}.")
+                else:
+                    break
+
+    except KeyboardInterrupt:
+
+        save = yes_or_no("Save the MLP?")
+        if save:
+            filename = valid_npz_filename()
+            MLP.save_weights_and_biases(filename)
+
+        raise KeyboardInterrupt
 
     save = yes_or_no("Save the MLP?")
     if save:
